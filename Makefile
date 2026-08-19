@@ -23,20 +23,20 @@ base: $(GOKU_BASE_OUTPUT)
 
 weights: build
 
-$(GOKU_BASE_OUTPUT): src/build_goku_collection.py src/build_regular.py src/build_bdf_face.py src/design.py src/font_variants.py src/icon_optical_policy.py src/terminal_graphics.py $(GOHU_REGULAR_BDF) $(GOHU_BOLD_BDF)
+$(GOKU_BASE_OUTPUT): src/build_goku_collection.py src/build_regular.py src/build_bdf_face.py src/design.py src/font_variants.py src/icon_optical_policy.py src/terminal_graphics.py src/text_glyphs.py $(GOHU_REGULAR_BDF) $(GOHU_BOLD_BDF)
 	mkdir -p "$(dir $@)"
 	python src/build_goku_collection.py --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --output "$@"
 
-$(GOKU_OUTPUT): $(GOKU_BASE_OUTPUT) src/build_weight_collection.py src/fontforge_change_text_weight.py
+$(GOKU_OUTPUT): $(GOKU_BASE_OUTPUT) src/build_weight_collection.py src/fontforge_change_text_weight.py src/text_glyphs.py
 	mkdir -p "$(dir $@)"
-	python src/build_weight_collection.py --source "$(GOKU_BASE_OUTPUT)" --output "$@" --family "$(GOKU_WEIGHT_FAMILY)"
+	python src/build_weight_collection.py --source "$(GOKU_BASE_OUTPUT)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --output "$@" --family "$(GOKU_WEIGHT_FAMILY)"
 
 base-validate: base
 	python src/validate_font.py --collection "$(GOKU_BASE_OUTPUT)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)"
 	python src/raster_audit.py --collection "$(GOKU_BASE_OUTPUT)"
 
 weight-audit: build base-validate
-	python src/audit_weight_collection.py --source "$(GOKU_BASE_OUTPUT)" --candidate "$(GOKU_OUTPUT)" --family "$(GOKU_WEIGHT_FAMILY)"
+	python src/audit_weight_collection.py --source "$(GOKU_BASE_OUTPUT)" --candidate "$(GOKU_OUTPUT)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --family "$(GOKU_WEIGHT_FAMILY)"
 	fc-scan --format='family=%{family}\nstyle=%{style}\nweight=%{weight}\nspacing=%{spacing}\npostscript=%{postscriptname}\n---\n' "$(GOKU_OUTPUT)"
 
 validate: weight-audit

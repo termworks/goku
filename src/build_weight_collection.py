@@ -8,7 +8,6 @@ import math
 import os
 import subprocess
 import tempfile
-import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,7 +16,16 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTCollection, TTFont
 
-from design import FONT_TIMESTAMP, SOURCE_DATE_EPOCH, VERSION
+from design import (
+    CELL_WIDTH,
+    FONT_TIMESTAMP,
+    ITALIC_OVERHANG,
+    SOURCE_DATE_EPOCH,
+    TEXT_HORIZONTAL_MARGIN,
+    VERSION,
+)
+from font_variants import fit_glyphs_horizontally
+from text_glyphs import text_glyph_names
 
 
 @dataclass(frozen=True)
@@ -35,7 +43,7 @@ WEIGHTS = (
     Weight("300", 300, "Regular", -20),
     Weight("400", 400, "Regular", 0, keep_hints=True),
     Weight("500", 500, "Regular", 30),
-    Weight("600", 600, "Bold", -30),
+    Weight("600", 600, "Bold", -15),
     Weight("700", 700, "Bold", 0, keep_hints=True),
     Weight("800", 800, "Bold", 20),
     Weight("900", 900, "Bold", 40),
@@ -45,6 +53,8 @@ WEIGHTS = (
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", required=True, type=Path)
+    parser.add_argument("--regular-bdf", required=True, type=Path)
+    parser.add_argument("--bold-bdf", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--family", default="Goku")
     return parser.parse_args()
@@ -74,17 +84,6 @@ def source_faces(path: Path) -> dict[str, int]:
 
 def open_face(path: Path, index: int) -> TTFont:
     return TTFont(path, fontNumber=index, recalcTimestamp=False)
-
-
-def text_glyph_names(font: TTFont) -> set[str]:
-    names = {
-        name
-        for codepoint, name in font.getBestCmap().items()
-        if unicodedata.category(chr(codepoint))[0] in {"L", "M", "N", "P"}
-    }
-    if "zero.ss01" in font.getGlyphOrder():
-        names.add("zero.ss01")
-    return names
 
 
 def remove_glyph_hinting(font: TTFont, glyph_names: set[str]) -> None:
@@ -118,6 +117,7 @@ def change_text_weight(
     glyph_names: set[str],
     temporary: Path,
     label: str,
+    italic: bool,
 ) -> TTFont:
     if delta == 0:
         remove_glyph_hinting(source, glyph_names)
@@ -203,6 +203,21 @@ def change_text_weight(
     finally:
         changed.close()
     remove_glyph_hinting(source, glyph_names)
+    left = -ITALIC_OVERHANG if italic else TEXT_HORIZONTAL_MARGIN
+    right = (
+        CELL_WIDTH + ITALIC_OVERHANG
+        if italic
+        else CELL_WIDTH - TEXT_HORIZONTAL_MARGIN
+    )
+    fitted = fit_glyphs_horizontally(
+        source,
+        glyph_names,
+        left,
+        right,
+        minimal_shift=True,
+    )
+    if fitted:
+        print(f"  fitted {fitted} weighted text glyphs inside the cell", flush=True)
     source.recalcBBoxes = True
     source.recalcTimestamp = False
     return source
@@ -330,7 +345,10 @@ def main() -> None:
                     else weight.source + ("Italic" if italic else "")
                 )
                 font = open_face(args.source, indexes[source_style])
-                glyph_names = text_glyph_names(font)
+                bdf_path = (
+                    args.regular_bdf if weight.source == "Regular" else args.bold_bdf
+                )
+                glyph_names = text_glyph_names(font, bdf_path)
                 if not weight.keep_hints:
                     label = weight.name + ("Italic" if italic else "")
                     font = change_text_weight(
@@ -339,6 +357,7 @@ def main() -> None:
                         glyph_names,
                         temporary,
                         label,
+                        italic,
                     )
                     font = autohint_weighted_face(
                         font,

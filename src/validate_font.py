@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-import unicodedata
 from pathlib import Path
 
 from fontTools.ttLib import TTCollection, TTFont
@@ -18,11 +17,14 @@ from design import (
     FAMILY,
     FONT_TIMESTAMP,
     ITALIC_OVERHANG,
+    PIXEL_SIZE,
     POSTSCRIPT_STEM,
+    TEXT_HORIZONTAL_MARGIN,
     UPM,
     VERSION,
 )
 from font_variants import is_powerline, is_private_use
+from text_glyphs import text_glyph_names
 
 
 EXPECTED_STYLES = {"Regular", "Bold", "Italic", "Bold Italic"}
@@ -109,18 +111,6 @@ def has_glyph_program(font: TTFont, name: str) -> bool:
     )
 
 
-def text_glyph_names(font: TTFont, bdf_path: Path) -> set[str]:
-    cmap = font.getBestCmap()
-    selected = {
-        cmap[glyph.encoding]
-        for glyph in load_bdf(bdf_path).glyphs
-        if glyph.encoding in cmap
-        and unicodedata.category(chr(glyph.encoding))[0] in {"L", "M", "N", "P"}
-    }
-    selected.add("zero.ss01")
-    return selected
-
-
 def single_substitutions(font: TTFont, feature_tag: str) -> dict[str, str]:
     feature_list = font["GSUB"].table.FeatureList.FeatureRecord
     lookup_list = font["GSUB"].table.LookupList.Lookup
@@ -165,6 +155,35 @@ def validate_italic_overhang(font: TTFont, text_names: set[str]) -> int:
     return checked
 
 
+def validate_text_clearance(
+    font: TTFont,
+    text_names: set[str],
+    *,
+    italic: bool,
+) -> int:
+    """Ensure prose stays clear while italic slant keeps bounded overhang."""
+    checked = 0
+    for name in text_names:
+        bounds = glyph_bounds_by_name(font, name)
+        if bounds is None:
+            continue
+        assert bounds[1] >= DESCENT + PIXEL_SIZE, (
+            f"text glyph {name} reaches bottom cell edge: {bounds}"
+        )
+        assert bounds[3] <= ASCENT - PIXEL_SIZE // 2, (
+            f"text glyph {name} reaches top cell edge: {bounds}"
+        )
+        if not italic:
+            assert bounds[0] >= TEXT_HORIZONTAL_MARGIN, (
+                f"upright text glyph {name} reaches left cell edge: {bounds}"
+            )
+            assert bounds[2] <= CELL_WIDTH - TEXT_HORIZONTAL_MARGIN, (
+                f"upright text glyph {name} reaches right cell edge: {bounds}"
+            )
+        checked += 1
+    return checked
+
+
 def main() -> None:
     args = parse_args()
     collection = TTCollection(args.collection)
@@ -202,6 +221,7 @@ def main() -> None:
     }
     hint_counts: dict[str, int] = {}
     icon_counts: dict[str, int] = {}
+    clearance_counts: dict[str, int] = {}
 
     for face_style, font in faces.items():
         assert names(font, 1) == {FAMILY}
@@ -248,6 +268,11 @@ def main() -> None:
         )
         hint_counts[face_style] = len(hinted)
         icon_counts[face_style] = validate_icon_bounds(font)
+        clearance_counts[face_style] = validate_text_clearance(
+            font,
+            text_names,
+            italic=is_italic,
+        )
 
     regular_codepoints = {glyph.encoding for glyph in regular_bdf.glyphs}
     bold_codepoints = {glyph.encoding for glyph in bold_bdf.glyphs}
@@ -304,6 +329,7 @@ def main() -> None:
     print(f"  source-matched bold differences: {changed_bold}")
     print(f"  hinted text glyphs: {hint_counts}")
     print(f"  cell-contained ordinary icons: {icon_counts}")
+    print(f"  cell-clear text glyphs: {clearance_counts}")
     print(f"  bounded italic text glyphs: {italic_counts}")
     print(f"  monospaced advance: {CELL_WIDTH} (.null is zero-width)")
     print(f"  full-cell block: {full_cell}")

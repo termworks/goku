@@ -5,7 +5,7 @@ from __future__ import annotations
 
 FAMILY = "Goku"
 POSTSCRIPT_STEM = "Goku"
-VERSION = "1.200"
+VERSION = "1.300"
 
 # A fixed timestamp makes clean builds byte-for-byte reproducible. TrueType
 # timestamps count seconds from 1904-01-01; SOURCE_DATE_EPOCH is Unix time.
@@ -40,6 +40,7 @@ X_HEIGHT = scale_grid(7, SOURCE_CELL_HEIGHT, UPM)
 CAP_HEIGHT = scale_grid(9, SOURCE_CELL_HEIGHT, UPM)
 PIXEL_SIZE = scale_grid(1, SOURCE_CELL_HEIGHT, UPM)
 ITALIC_OVERHANG = PIXEL_SIZE
+TEXT_HORIZONTAL_MARGIN = PIXEL_SIZE // 2
 
 # Nerd Fonts' Powerline separators intentionally bleed slightly beyond the
 # nominal cell to prevent hairline seams. Ordinary icons should not.

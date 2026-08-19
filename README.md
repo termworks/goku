@@ -39,8 +39,9 @@ every numeric weight from `100` through `900`:
 
 There are no Thin, Light, Medium, SemiBold, or Bold-named release faces. The
 numeric face is the complete identity. Weight `400` preserves the approved
-Gohu regular-derived outlines and hinting exactly; `700` preserves the real
-Gohu bold-derived outlines and hinting exactly. The surrounding weights form a
+Gohu regular-derived design and hinting; `700` preserves the real Gohu Bold as
+its source instead of mechanically emboldening Regular. Both anchors receive
+the same text-edge clearance treatment. The surrounding weights form a
 visually monotonic scale around those two anchors.
 
 ## Terminal geometry
@@ -58,6 +59,10 @@ choose a different numeric weight instead.
 ## Rendering guarantees
 
 - All 18 faces keep the same monospaced advances and character coverage.
+- Ordinary upright text has outline clearance from every cell edge: shortened
+  descenders, a half-source-pixel side inset, and protected top accents.
+- Cell-spanning em dashes, terminal graphics, icons, and Powerline separators
+  retain their intentional edge behavior.
 - Text uses bounded TrueType hinting from 6 through 13 px.
 - Nerd icons, box drawing, blocks, and Powerline symbols do not change size or
   shape between weights.
@@ -99,8 +104,8 @@ make clean all
 `make all` builds `build/Goku.ttc` and validates the internal four-face source
 anchors before auditing the 18-face numeric release. The audit verifies names,
 weights, version metadata, glyph identity, hint isolation, unchanged icons,
-monospaced metrics, the exact 400/700 reference rasters, and the visual order of
-all nine weights.
+monospaced metrics, the 400/700 source-anchor rasters, text-edge clearance, and
+the visual order of all nine weights.
 
 Prepare upload-ready GitHub release assets with:
 
@@ -117,12 +122,12 @@ workflow attaches the raw `Goku.ttc` directly, together with its SHA-256
 checksum, manifest, notices, and GohuFont license:
 
 ```sh
-git tag -a v1.200 -m "Goku 1.200"
-git push origin v1.200
+git tag -a v1.300 -m "Goku 1.300"
+git push origin v1.300
 ```
 
 The same workflow can be started manually from **Actions → Goku release → Run
-workflow**. The optional tag field can be left blank to derive `v1.200` from
+workflow**. The optional tag field can be left blank to derive `v1.300` from
 the generated release manifest. If that tag does not exist yet, the manual run
 creates it at the selected branch commit before publishing the release.
 

@@ -17,9 +17,12 @@ bitmap anchors:
 - Upstream license: WTFPL version 2, recorded in
   `vendor/gohufont/COPYING-LICENSE`
 
-The 400 and 700 release faces preserve these two real source anchors. Other
-numeric text weights are generated from the nearest anchor; icons and terminal
-graphics are not weight-transformed.
+The 400 and 700 release faces preserve these two real source designs as their
+anchors. Goku applies a documented cell-clearance transform to ordinary text:
+descenders are shortened, top-edge accents are lowered slightly, and upright
+edge-reaching forms are fitted inside a half-source-pixel side margin. Other
+numeric text weights are generated from the nearest transformed anchor; icons
+and terminal graphics are not weight-transformed.
 
 ## Nerd Fonts patcher
 

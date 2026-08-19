@@ -8,12 +8,10 @@ import os
 import subprocess
 import sys
 import tempfile
-import unicodedata
 from pathlib import Path
 
 from fontTools.ttLib import TTCollection, TTFont
 
-from bdf import load_bdf
 from design import (
     FAMILY,
     HINTING_LIMIT,
@@ -23,11 +21,13 @@ from design import (
     SOURCE_DATE_EPOCH,
 )
 from font_variants import (
+    add_text_cell_clearance,
     italicize,
     normalize_nerd_icons,
     set_style,
 )
 from terminal_graphics import apply_native_terminal_graphics
+from text_glyphs import text_glyph_names
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,20 +40,6 @@ def parse_args() -> argparse.Namespace:
 
 def run(*command: str) -> None:
     subprocess.run(command, check=True)
-
-
-def text_glyph_names(font: TTFont, bdf_path: Path) -> set[str]:
-    """Select textual Gohu glyphs while leaving symbols and UI art upright."""
-    cmap = font.getBestCmap()
-    names = {
-        cmap[glyph.encoding]
-        for glyph in load_bdf(bdf_path).glyphs
-        if glyph.encoding in cmap
-        and unicodedata.category(chr(glyph.encoding))[0] in {"L", "M", "N", "P"}
-    }
-    if "zero.ss01" in font.getGlyphOrder():
-        names.add("zero.ss01")
-    return names
 
 
 def autohint_face(
@@ -166,6 +152,13 @@ def main() -> None:
         normalize_nerd_icons(bold_italic)
         regular_text = text_glyph_names(regular, args.regular_bdf)
         bold_text = text_glyph_names(bold, args.bold_bdf)
+        for font, text_glyphs in (
+            (regular, regular_text),
+            (bold, bold_text),
+            (italic, regular_text),
+            (bold_italic, bold_text),
+        ):
+            add_text_cell_clearance(font, text_glyphs)
         italicize(italic, regular_text)
         italicize(bold_italic, bold_text)
 

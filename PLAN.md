@@ -1,9 +1,9 @@
 # Goku development plan
 
 Last updated: 2026-08-19
-Current release candidate: 1.200
-Active milestone: publish the validated numeric-weight release
-Active task: commit the final release-gate fixes, tag, and publish the GitHub release
+Current release candidate: 1.300
+Active milestone: text cell-edge clearance
+Active task: live-test the validated 1.300 collection in Kitty
 
 ## Mission
 
@@ -20,7 +20,8 @@ change.
 - Every encoded character remains in one 1170-unit cell except intentional
   Powerline seam overlap and opt-in multi-cell ligatures.
 - Numeric weights 100–900 and their matching italics are real static faces;
-  weights 400 and 700 retain the handcrafted source anchors exactly.
+  weights 400 and 700 retain the handcrafted Regular and Bold source designs
+  with the shared, documented cell-clearance transform.
 - Coding ambiguities (`0/O`, `1/I/l/|`, `5/S`, `2/Z`, punctuation pairs) are
   reviewable in specimens and can be addressed without silently changing the
   default design.
@@ -35,7 +36,8 @@ change.
 These rules apply to every milestone.
 
 1. Preserve Gohu's default letterforms unless a default change is explicitly
-   approved from a side-by-side specimen.
+   approved from a side-by-side specimen; cell-edge clearance is a deliberate
+   Goku default rather than a silent source substitution.
 2. Keep the 2048 UPM, 1170-unit advance, 1609/-439 vertical metrics, zero line
    gap, and 8x14 source-grid relationship.
 3. Keep Gohu's handcrafted Regular and Bold as the source of truth. Do not

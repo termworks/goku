@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import argparse
 import copy
-import unicodedata
 from pathlib import Path
 
 from fontTools.ttLib import TTCollection, TTFont
 from PIL import ImageFont
 
 from design import VERSION
+from text_glyphs import text_glyph_names
 
 
 EXPECTED = {
@@ -45,6 +45,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--candidate", required=True, type=Path)
+    parser.add_argument("--regular-bdf", required=True, type=Path)
+    parser.add_argument("--bold-bdf", required=True, type=Path)
     parser.add_argument("--family", default="Goku")
     return parser.parse_args()
 
@@ -75,17 +77,6 @@ def outline_bounds(font: TTFont, glyph_name: str) -> tuple[int, int, int, int] |
         return None
     glyph.recalcBounds(font["glyf"])
     return glyph.xMin, glyph.yMin, glyph.xMax, glyph.yMax
-
-
-def text_names(font: TTFont) -> set[str]:
-    names = {
-        name
-        for codepoint, name in font.getBestCmap().items()
-        if unicodedata.category(chr(codepoint))[0] in {"L", "M", "N", "P"}
-    }
-    if "zero.ss01" in font.getGlyphOrder():
-        names.add("zero.ss01")
-    return names
 
 
 def private_use(codepoint: int) -> bool:
@@ -142,7 +133,10 @@ def main() -> None:
             name: advance for name, (advance, _) in original["hmtx"].metrics.items()
         }
 
-        allowed = text_names(original)
+        bdf_path = (
+            args.bold_bdf if source_style.startswith("Bold") else args.regular_bdf
+        )
+        allowed = text_glyph_names(original, bdf_path)
         changed = {
             name
             for name in original.getGlyphOrder()

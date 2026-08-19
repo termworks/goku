@@ -14,7 +14,10 @@ from design import (
     DESCENT,
     FONT_TIMESTAMP,
     ITALIC_OVERHANG,
+    PIXEL_SIZE,
     POWERLINE_RANGES,
+    SOURCE_DESCENT,
+    TEXT_HORIZONTAL_MARGIN,
     VERSION,
 )
 from icon_optical_policy import OPTICAL_SCALE_BY_CODEPOINT
@@ -95,11 +98,59 @@ def apply_optical_icon_policy(font: TTFont) -> int:
     return changed
 
 
+def add_text_cell_clearance(font: TTFont, glyph_names: set[str]) -> int:
+    """Keep text off cell edges without shrinking its readable body."""
+    descender_scale = (SOURCE_DESCENT - 1) / SOURCE_DESCENT
+    top_row = ASCENT - PIXEL_SIZE
+    top_shift = PIXEL_SIZE // 2
+    changed_vertical = 0
+    glyf = font["glyf"]
+    for name in sorted(glyph_names):
+        glyph = glyf[name]
+        if glyph.numberOfContours == 0:
+            continue
+        glyph.expand(glyf)
+        glyph.removeHinting()
+        glyph.recalcBounds(glyf)
+        shorten_descender = glyph.yMin <= DESCENT
+        lower_top_row = glyph.yMax >= ASCENT
+        if not shorten_descender and not lower_top_row:
+            continue
+        for point_index, (x, y) in enumerate(glyph.coordinates):
+            if shorten_descender and y < 0:
+                y = round(y * descender_scale)
+            if lower_top_row and y >= top_row:
+                y -= top_shift
+            glyph.coordinates[point_index] = (x, y)
+        glyph.recalcBounds(glyf)
+        advance, _ = font["hmtx"].metrics[name]
+        font["hmtx"].metrics[name] = (advance, glyph.xMin)
+        changed_vertical += 1
+
+    fitted = fit_glyphs_horizontally(
+        font,
+        glyph_names,
+        TEXT_HORIZONTAL_MARGIN,
+        CELL_WIDTH - TEXT_HORIZONTAL_MARGIN,
+        minimal_shift=True,
+    )
+    font.recalcBBoxes = True
+    font.recalcTimestamp = False
+    print(
+        f"  cleared {changed_vertical} vertical text edges and "
+        f"{fitted} horizontal text edges",
+        flush=True,
+    )
+    return changed_vertical + fitted
+
+
 def fit_glyphs_horizontally(
     font: TTFont,
     glyph_names: set[str],
     left: int,
     right: int,
+    *,
+    minimal_shift: bool = False,
 ) -> int:
     """Fit selected outlines into a horizontal safety region."""
     changed = 0
@@ -121,7 +172,13 @@ def fit_glyphs_horizontally(
         width = glyph.xMax - glyph.xMin
         scale = min(1.0, target_width / width)
         center = (glyph.xMin + glyph.xMax) / 2
-        offset = target_center - scale * center
+        if minimal_shift and scale == 1.0:
+            if glyph.xMin < left:
+                offset = safe_left - glyph.xMin
+            else:
+                offset = safe_right - glyph.xMax
+        else:
+            offset = target_center - scale * center
         transform_glyph_x(font, name, scale, offset)
         fitted = glyf[name]
         fitted.recalcBounds(glyf)
