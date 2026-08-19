@@ -1,0 +1,5 @@
+Goku Regular / Bold / Italic / Bold Italic
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+abcdefghijklmnopqrstuvwxyz
+0123456789 !?@#$%&*()[]{}
+normal  dim-gray  BOLD  ─│┌┐└┘ █▓▒░

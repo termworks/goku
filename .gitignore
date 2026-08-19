@@ -1,0 +1,8 @@
+/build/
+/dist/
+/result
+/.direnv/
+/.envrc
+__pycache__/
+*.py[cod]
+!PLAN.md

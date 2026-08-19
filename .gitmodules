@@ -1,0 +1,4 @@
+[submodule "vendor/gohufont"]
+	path = vendor/gohufont
+	url = https://github.com/hchargois/gohufont.git
+	shallow = true

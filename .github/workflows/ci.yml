@@ -1,0 +1,43 @@
+name: Goku quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out pinned sources
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Build and run structural/raster validation
+        run: nix develop path:$PWD --command make clean all
+
+      - name: Run independent font engines and integrity reports
+        run: >-
+          nix develop path:$PWD --command make
+          ots harfbuzz fontforge sfnt-audit-report fontbakery-report
+          QUALITY_DIR=build/reports/quality/ci
+
+      - name: Prove clean-build reproducibility and budgets
+        run: >-
+          nix develop path:$PWD --command make reproducible
+          QUALITY_DIR=build/reports/quality/ci
+
+      - name: Upload quality evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goku-quality-reports
+          path: build/reports/quality/ci
+          if-no-files-found: error
