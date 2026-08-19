@@ -112,6 +112,20 @@ The release gate also runs OpenType Sanitizer, HarfBuzz shaping, sfnt integrity,
 and two independent clean builds. It writes one font binary plus its checksum,
 machine-readable manifest, release notes, and third-party notices to `dist/`.
 
+Push a `v`-prefixed tag to publish those files as a GitHub Release. The release
+workflow attaches the raw `Goku.ttc` directly, together with its SHA-256
+checksum, manifest, notices, and GohuFont license:
+
+```sh
+git tag -a v1.200 -m "Goku 1.200"
+git push origin v1.200
+```
+
+The same workflow can be started manually from **Actions → Goku release → Run
+workflow**. The optional tag field can be left blank to derive `v1.200` from
+the generated release manifest. If that tag does not exist yet, the manual run
+creates it at the selected branch commit before publishing the release.
+
 ## Install
 
 Linux user installation:

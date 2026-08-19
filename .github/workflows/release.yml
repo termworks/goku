@@ -1,0 +1,90 @@
+name: Goku release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag; leave blank to derive it from release.json"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged sources
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Build reproducible release assets
+        run: nix develop path:$PWD --command make clean release
+
+      - name: Verify the release font and checksum
+        run: |
+          test -s dist/Goku.ttc
+          cd dist
+          sha256sum --check Goku.ttc.sha256
+
+      - name: Resolve release tag
+        id: release_tag
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            release_tag="$GITHUB_REF_NAME"
+          elif [[ -n "$REQUESTED_TAG" ]]; then
+            release_tag="$REQUESTED_TAG"
+          else
+            version=$(python -c 'import json; print(json.load(open("dist/release.json"))["release"].removeprefix("Goku "))')
+            release_tag="v$version"
+          fi
+
+          if [[ ! "$release_tag" =~ ^v[0-9][0-9A-Za-z._-]*$ ]]; then
+            echo "Invalid release tag: $release_tag" >&2
+            exit 1
+          fi
+
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Upload raw font workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/Goku.ttc
+          archive: false
+          if-no-files-found: error
+
+      - name: Publish GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            tag_args=(--verify-tag)
+          else
+            tag_args=(--target "$GITHUB_SHA")
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            "dist/Goku.ttc#Goku TrueType Collection" \
+            "dist/Goku.ttc.sha256#SHA-256 checksum" \
+            "dist/release.json#Release manifest" \
+            "dist/THIRD_PARTY_NOTICES.md#Third-party notices" \
+            "dist/GohuFont-WTFPL.txt#GohuFont license" \
+            "${tag_args[@]}" \
+            --title "Goku ${RELEASE_TAG#v}" \
+            --notes-file dist/RELEASE_NOTES.md
