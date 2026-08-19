@@ -79,7 +79,7 @@ fontforge: quality-faces
 	mkdir -p "$(QUALITY_DIR)/fontforge"
 	for face in "$(QUALITY_FACES)"/*.ttf; do \
 		stem=$$(basename "$$face" .ttf); \
-		fontforge -quiet -script src/fontforge_validate.py "$$face" --report "$(QUALITY_DIR)/fontforge/$$stem.json" 2>"$(QUALITY_DIR)/fontforge/$$stem.stderr.log"; \
+		fontforge -quiet -script src/fontforge_validate.py "$$face" --report "$(QUALITY_DIR)/fontforge/$$stem.json" 2>"$(QUALITY_DIR)/fontforge/$$stem.stderr.log" || exit $$?; \
 	done
 
 harfbuzz:

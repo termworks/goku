@@ -1,9 +1,9 @@
 # Goku development plan
 
-Last updated: 2026-08-18  
-Current release: 1.100  
-Active milestone: 1.200 — optical icon consistency  
-Active task: P1.7 — visual approval and release gate
+Last updated: 2026-08-19
+Current release candidate: 1.200
+Active milestone: publish the validated numeric-weight release
+Active task: commit the final release-gate fixes, tag, and publish the GitHub release
 
 ## Mission
 
@@ -19,7 +19,8 @@ change.
   9–14 px range used by compact terminals.
 - Every encoded character remains in one 1170-unit cell except intentional
   Powerline seam overlap and opt-in multi-cell ligatures.
-- Regular, Bold, Italic, and Bold Italic are real, correctly linked faces.
+- Numeric weights 100–900 and their matching italics are real static faces;
+  weights 400 and 700 retain the handcrafted source anchors exactly.
 - Coding ambiguities (`0/O`, `1/I/l/|`, `5/S`, `2/Z`, punctuation pairs) are
   reviewable in specimens and can be addressed without silently changing the
   default design.
@@ -61,8 +62,8 @@ evidence exists in the repository or build log.
    font.
 3. Run `make clean all`, structural validation, raster validation, shaping
    tests, and a second clean reproducibility build.
-4. Generate labeled specimens at 10, 14, 20, and 29 px, including all four
-   faces and relevant symbols.
+4. Generate labeled specimens at 10, 14, 20, and 29 px, including the numeric
+   weight range and relevant symbols.
 5. Compare old and new output. Reject changes that improve one case by damaging
    another.
 6. Get visual approval, bump the version, install, refresh Fontconfig, and
@@ -114,7 +115,7 @@ Powerline separators, box drawing, or block elements.
 - [x] **P1.5 Regression:** add icon centroid, raster-size, clipping, and
   representative source-set tests.
 - [x] **P1.6 Review:** generate old/new icon atlases at 10, 14, and 20 px.
-- [ ] **P1.7 Release gate:** approve, version, reproducibility-check, install,
+- [x] **P1.7 Release gate:** approve, version, reproducibility-check, install,
   and verify in Kitty prompts, tabs, file listings, and status lines.
 
 P1.1 evidence:
@@ -364,18 +365,18 @@ P7 evidence to date:
   every reporting engine, repeats the clean build, and uploads the evidence.
 - `make quality-report` is the complete non-suppressing baseline reporter.
   `make quality` is the strict release gate and deliberately remains red while
-  the recorded FontBakery and embedding-rights defects exist.
+  the remaining recorded FontBakery defects exist.
 
 ## P8 — Specimens, documentation, and releases
 
 - [ ] Add `make specimen` for a deterministic all-face, multi-size coding sheet.
 - [ ] Add `make icon-atlas` and `make compare OLD=... NEW=...`.
-- [ ] Add `CHANGELOG.md` with visible, metric, coverage, and compatibility
+- [x] Add `CHANGELOG.md` with visible, metric, coverage, and compatibility
   changes for every release.
 - [ ] Document every OpenType feature with its tag, default state, and Kitty
   example.
 - [ ] Generate a coverage report grouped by Unicode block and icon source.
-- [ ] Add a release target that produces only `Goku.ttc` plus its checksum and
+- [x] Add a release target that produces only `Goku.ttc` plus its checksum and
   validation report; do not produce alternate font binaries.
 
 ## Ideas deliberately deferred

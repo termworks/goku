@@ -235,6 +235,10 @@ def set_style(
         set_name(font, name_id, value)
 
     os2 = font["OS/2"]
+    # Gohu is WTFPL and the bundled Nerd glyphs are redistributable. The Nerd
+    # patcher can leave Preview & Print embedding (0x4) behind; Goku releases
+    # must advertise installable embedding consistently on every face.
+    os2.fsType = 0
     os2.usWeightClass = 700 if bold else 400
     os2.fsSelection &= ~((1 << 0) | (1 << 5) | (1 << 6) | (1 << 9))
     if italic:
