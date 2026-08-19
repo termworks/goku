@@ -3,6 +3,15 @@ GOHU_BOLD_BDF ?= vendor/gohufont/gohufont-uni-14b.bdf
 GOKU_BASE_OUTPUT := build/intermediate/Goku-Base.ttc
 GOKU_OUTPUT := build/Goku.ttc
 GOKU_WEIGHT_FAMILY ?= Goku
+GOKU_PIXEL_OUTPUT ?= build/Goku-Pixel.ttc
+GOKU_PIXEL_UNHINTED := build/intermediate/Goku-Pixel-unhinted.ttc
+GOKU_PIXEL_FAMILY ?= Goku Pixel
+PIXEL_COLUMNS ?= 20
+PIXEL_ROWS ?= 35
+PIXEL_THRESHOLD ?= 0.5
+PIXEL_WEIGHT_CONTRAST ?= 0.0
+PIXEL_REPORT := build/reports/pixelation.json
+PIXEL_QUALITY_DIR := build/reports/pixel-quality
 RELEASE_DIR ?= dist
 ICON_INVENTORY := build/reports/icon-inventory.json
 ICON_CLASSES := build/reports/icon-classes.json
@@ -13,7 +22,7 @@ QUALITY_FONT ?= $(GOKU_OUTPUT)
 QUALITY_DIR ?= build/reports/quality
 QUALITY_FACES := $(QUALITY_DIR)/faces
 
-.PHONY: all build base weights base-validate weight-audit validate release terminal-inventory terminal-graphics-audit terminal-compare quality-report quality quality-faces ots fontbakery-report fontbakery fontforge harfbuzz sfnt-audit-report sfnt-audit reproducible icon-inventory icon-classes icon-policy p1-regression icon-atlas clean
+.PHONY: all build base weights pixel pixel-validate base-validate weight-audit validate release terminal-inventory terminal-graphics-audit terminal-compare quality-report quality quality-faces ots fontbakery-report fontbakery fontforge harfbuzz sfnt-audit-report sfnt-audit reproducible icon-inventory icon-classes icon-policy p1-regression icon-atlas clean
 
 all: validate
 
@@ -22,6 +31,23 @@ build: $(GOKU_OUTPUT)
 base: $(GOKU_BASE_OUTPUT)
 
 weights: build
+
+pixel: $(GOKU_PIXEL_OUTPUT)
+
+$(GOKU_PIXEL_UNHINTED): $(GOKU_OUTPUT) src/pixelate_collection.py
+	mkdir -p "$(dir $@)" "$(dir $(PIXEL_REPORT))"
+	python src/pixelate_collection.py --source "$(GOKU_OUTPUT)" --output "$@" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)" --threshold "$(PIXEL_THRESHOLD)" --weight-contrast "$(PIXEL_WEIGHT_CONTRAST)" --family "$(GOKU_PIXEL_FAMILY)" --report "$(PIXEL_REPORT)"
+
+$(GOKU_PIXEL_OUTPUT): $(GOKU_PIXEL_UNHINTED) src/hint_pixel_collection.py src/text_glyphs.py src/bdf.py src/design.py $(GOHU_REGULAR_BDF) $(GOHU_BOLD_BDF)
+	mkdir -p "$(dir $@)"
+	python src/hint_pixel_collection.py --source "$(GOKU_PIXEL_UNHINTED)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --output "$@"
+
+pixel-validate: pixel
+	python src/validate_pixelated_collection.py --source "$(GOKU_OUTPUT)" --candidate "$(GOKU_PIXEL_OUTPUT)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)"
+	mkdir -p "$(PIXEL_QUALITY_DIR)/ots"
+	ots-sanitize "$(GOKU_PIXEL_OUTPUT)" "$(PIXEL_QUALITY_DIR)/ots/Goku-Pixel-sanitized.ttc"
+	python src/shaping_audit.py --collection "$(GOKU_PIXEL_OUTPUT)" --report "$(PIXEL_QUALITY_DIR)/harfbuzz.json"
+	python src/sfnt_audit.py --collection "$(GOKU_PIXEL_OUTPUT)" --sources SOURCES.md --gohu-license vendor/gohufont/COPYING-LICENSE --report "$(PIXEL_QUALITY_DIR)/sfnt.json"
 
 $(GOKU_BASE_OUTPUT): src/build_goku_collection.py src/build_regular.py src/build_bdf_face.py src/design.py src/font_variants.py src/icon_optical_policy.py src/terminal_graphics.py src/text_glyphs.py $(GOHU_REGULAR_BDF) $(GOHU_BOLD_BDF)
 	mkdir -p "$(dir $@)"

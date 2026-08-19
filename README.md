@@ -5,8 +5,9 @@
 </p>
 
 Goku is a vector, monospaced terminal font derived from the handcrafted Gohu
-uni14 bitmap design. The release is one portable TrueType Collection:
-`Goku.ttc`.
+uni14 bitmap design. `Goku Pixel` rebuilds the complete collection—text,
+italics, symbols, terminal graphics, and Nerd Font icons—on one crisp pixel
+grid. The previews below are rendered directly from `Goku-Pixel.ttc`.
 
 ## Preview
 
@@ -15,11 +16,15 @@ uni14 bitmap design. The release is one portable TrueType Collection:
 </p>
 
 <p align="center">
-  <img src="artwork/03-goku-symbols.png" alt="Goku terminal symbols and Nerd Font icons" width="100%">
+  <img src="artwork/03-goku-symbols.png" alt="Goku Pixel icons, dev logos, terminal symbols, math, braille, and legacy-computing glyphs" width="100%">
 </p>
 
 <p align="center">
   <img src="artwork/04-goku-code.png" alt="Goku code and terminal specimen" width="100%">
+</p>
+
+<p align="center">
+  <img src="artwork/05-goku-terminal.png" alt="Goku Pixel terminal dashboard with icons, plots, status bars, and Powerline symbols" width="100%">
 </p>
 
 The collection contains 18 faces. Upright and italic variants are available at
@@ -74,23 +79,24 @@ choose a different numeric weight instead.
 
 ## Kitty
 
-Select exact faces by PostScript name. This example uses weight 200 for normal
-and italic text, and the real 700 weight for bold:
+Select exact faces by PostScript name. This is the small-size Goku Pixel setup
+used during development: weight 200 for normal and italic text, 600 for bold,
+and 700 for bold italic.
 
 ```conf
-font_family      postscript_name=Goku-200
-bold_font        postscript_name=Goku-700
-italic_font      postscript_name=Goku-200Italic
-bold_italic_font postscript_name=Goku-700Italic
+font_family      postscript_name=GokuPixel-200
+bold_font        postscript_name=GokuPixel-600
+italic_font      postscript_name=GokuPixel-200Italic
+bold_italic_font postscript_name=GokuPixel-700Italic
 ```
 
 Enable the dotted zero on the selected faces with:
 
 ```conf
-font_features Goku-200 +ss01
-font_features Goku-700 +ss01
-font_features Goku-200Italic +ss01
-font_features Goku-700Italic +ss01
+font_features GokuPixel-200 +ss01
+font_features GokuPixel-600 +ss01
+font_features GokuPixel-200Italic +ss01
+font_features GokuPixel-700Italic +ss01
 ```
 
 ## Build and verify
@@ -106,6 +112,55 @@ anchors before auditing the 18-face numeric release. The audit verifies names,
 weights, version metadata, glyph identity, hint isolation, unchanged icons,
 monospaced metrics, the 400/700 source-anchor rasters, text-edge clearance, and
 the visual order of all nine weights.
+
+### Universal pixelation
+
+The optional pixel pass converts every drawable outline—not only Gohu text,
+but also Unicode symbols, box drawing, Powerline, Nerd Font icons, alternates,
+and `.notdef`—into grid-aligned rectangles:
+
+```sh
+make pixel-validate
+```
+
+For each virtual cell, `src/pixelate_collection.py` measures the exact
+geometric intersection with the source outline. Coverage strictly greater than
+50% becomes one filled pixel; everything else becomes empty. Every face uses
+the same cutoff. This preserves complete terminals and descenders, avoids
+overfilled heavy counters, and keeps symbols, Powerline glyphs, box drawing,
+and icons consistent across the family. The validated default is a 20×35 grid:
+its pixels remain square in Goku's 8:14 cell while preserving every non-empty
+outline across all 18 faces. The result is `build/Goku-Pixel.ttc`, under the
+separate `Goku Pixel` family so it can be tested beside regular Goku.
+
+After quantization, the build regenerates TrueType instructions for mapped text
+glyphs at 7–13px and strips them from symbols and icons. This keeps every
+outline exactly pixel-aligned while making the nine weights rasterize in strict
+visual order at Kitty's small terminal sizes. The pixel validator checks the
+complete descenders and the upright/italic 100–900 raster progression.
+
+The grid and threshold are configurable. For example:
+
+```sh
+make pixel PIXEL_COLUMNS=24 PIXEL_ROWS=42 PIXEL_THRESHOLD=0.5
+```
+
+`make pixel-validate` rejects lost outlines, off-grid points, curves, diagonal
+segments, changed character maps or advances, stale glyph hints, shaping
+regressions, invalid sfnt data, and OTS failures.
+
+### Regenerate the showcase
+
+The five PNGs are generated from the built font rather than approximated with
+a lookalike. Supply the hero illustration used by the header; all typography,
+code, icons, diagrams, and terminal graphics are rendered from the TTC:
+
+```sh
+python src/render_promo_artwork.py \
+  --font build/Goku-Pixel.ttc \
+  --hero path/to/goku-hero.jpg \
+  --output artwork
+```
 
 Prepare upload-ready GitHub release assets with:
 
