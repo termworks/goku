@@ -1,8 +1,26 @@
 # Goku terminal font
 
+<p align="center">
+  <img src="artwork/01-goku-header.png" alt="Goku terminal font — code at full power" width="100%">
+</p>
+
 Goku is a vector, monospaced terminal font derived from the handcrafted Gohu
 uni14 bitmap design. The release is one portable TrueType Collection:
 `Goku.ttc`.
+
+## Preview
+
+<p align="center">
+  <img src="artwork/02-goku-weights.png" alt="Goku weights 100 through 900" width="100%">
+</p>
+
+<p align="center">
+  <img src="artwork/03-goku-symbols.png" alt="Goku terminal symbols and Nerd Font icons" width="100%">
+</p>
+
+<p align="center">
+  <img src="artwork/04-goku-code.png" alt="Goku code and terminal specimen" width="100%">
+</p>
 
 The collection contains 18 faces. Upright and italic variants are available at
 every numeric weight from `100` through `900`:
