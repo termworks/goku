@@ -27,3 +27,11 @@ Nerd Fonts' license audit is available at:
 <https://github.com/ryanoasis/nerd-fonts/blob/v3.4.0/license-audit.md>
 
 Nerd Fonts project: <https://github.com/ryanoasis/nerd-fonts>
+
+## Promotional artwork
+
+`artwork/01-goku-header.png` adapts character artwork from the official
+[Dragon Ball Super: Beerus](https://dragonball-super.com/en/) key visual.
+Dragon Ball character artwork is © BIRD STUDIO/SHUEISHA, TOEI ANIMATION. It is
+promotional repository artwork only, is not embedded in `Goku.ttc`, and is not
+covered by the font-source licenses above.

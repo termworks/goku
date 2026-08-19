@@ -4,6 +4,12 @@
   <img src="artwork/01-goku-header.png" alt="Goku terminal font — code at full power" width="100%">
 </p>
 
+<p align="center"><sub>
+Character artwork adapted from the official
+<a href="https://dragonball-super.com/en/">Dragon Ball Super: Beerus</a>
+key visual. © BIRD STUDIO/SHUEISHA, TOEI ANIMATION.
+</sub></p>
+
 Goku is a vector, monospaced terminal font derived from the handcrafted Gohu
 uni14 bitmap design. The release is one portable TrueType Collection:
 `Goku.ttc`.
