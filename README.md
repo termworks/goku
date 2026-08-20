@@ -164,16 +164,19 @@ regressions, invalid sfnt data, and OTS failures.
 
 ### Regenerate the showcase
 
-The six PNGs are generated from the built font rather than approximated with
-a lookalike. Supply the hero illustration used by the header; all typography,
-code, icons, diagrams, and terminal graphics are rendered from the TTC:
+The specimen PNGs are generated from the built font rather than approximated
+with a lookalike. By default this regenerates `02` through `06` without
+touching the approved Goku hero. All typography, code, icons, prompts, and
+terminal graphics are rendered from the TTC:
 
 ```sh
 python src/render_promo_artwork.py \
   --font build/Goku.ttc \
-  --hero path/to/goku-hero.jpg \
   --output artwork
 ```
+
+To intentionally rebuild the hero too, add `--include-header --hero
+path/to/goku-hero.jpg`.
 
 Prepare upload-ready GitHub release assets with:
 

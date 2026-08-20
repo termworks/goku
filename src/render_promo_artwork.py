@@ -122,6 +122,68 @@ def save_png(image: Image.Image, path: Path, description: str) -> None:
     image.convert("RGB").save(path, format="PNG", optimize=True, pnginfo=info)
 
 
+def specimen_canvas(height: int) -> Image.Image:
+    """A restrained screen surface without fake window chrome or cards."""
+    image = Image.new("RGB", (WIDTH, height), BG)
+    draw = ImageDraw.Draw(image)
+    upper = (10, 13, 23)
+    lower = (6, 8, 15)
+    for y in range(height):
+        t = y / max(1, height - 1)
+        color = tuple(round(a + (b - a) * t) for a, b in zip(upper, lower))
+        draw.line((0, y, WIDTH, y), fill=color)
+    draw.rectangle((48, 0, 52, height), fill=(29, 38, 61))
+    return image.convert("RGBA")
+
+
+def section_heading(
+    draw: ImageDraw.ImageDraw,
+    faces: Faces,
+    x: int,
+    y: int,
+    label: str,
+    color: str,
+    width: int,
+) -> None:
+    draw.text((x, y), label, font=faces.get(700, 27), fill=color)
+    line(draw, (x, y + 45, x + width, y + 45), color, 2)
+
+
+def draw_powerline_prompt(
+    draw: ImageDraw.ImageDraw,
+    faces: Faces,
+    x: float,
+    y: float,
+    segments: list[tuple[str, str, str]],
+    size: int = 38,
+    opening: bool = True,
+) -> float:
+    """Render contiguous Powerline modules with real color-transition cells."""
+    font = faces.get(600, size)
+    cursor = x
+    height = size + 22
+    text_y = y + 7
+
+    if opening:
+        opening_width = draw.textlength("", font=font)
+        draw.text((cursor, text_y), "", font=font, fill=segments[0][1])
+        cursor += opening_width
+
+    for index, (value, background, foreground) in enumerate(segments):
+        value_width = draw.textlength(value, font=font)
+        draw.rectangle((cursor, y, cursor + value_width + 1, y + height), fill=background)
+        draw.text((cursor, text_y), value, font=font, fill=foreground)
+        cursor += value_width
+
+        separator = ""
+        separator_width = draw.textlength(separator, font=font)
+        next_background = segments[index + 1][1] if index + 1 < len(segments) else BG
+        draw.rectangle((cursor, y, cursor + separator_width + 1, y + height), fill=next_background)
+        draw.text((cursor, text_y), separator, font=font, fill=background)
+        cursor += separator_width
+    return cursor
+
+
 def render_header(faces: Faces, hero_path: Path, output: Path) -> None:
     hero = crop_cover(Image.open(hero_path).convert("RGB"), WIDTH, 900)
     hero = ImageEnhance.Contrast(hero).enhance(1.08)
@@ -164,63 +226,44 @@ def render_header(faces: Faces, hero_path: Path, output: Path) -> None:
 
 
 def render_weights(faces: Faces, output: Path) -> None:
-    image = canvas(1120, (8, 10, 23), (15, 12, 31)).convert("RGBA")
+    image = specimen_canvas(1180)
     draw = ImageDraw.Draw(image)
-    draw.text((92, 66), "NINE LEVELS OF POWER", font=faces.get(800, 68), fill=INK)
-    draw.text((96, 145), "Every 100. Every face. One monospace system.", font=faces.get(200, 31), fill=BLUE)
-    line(draw, (96, 202, 1704, 202), ORANGE, 4)
+    draw.text((88, 56), "GOKU / WEIGHT PROOF", font=faces.get(800, 64), fill=INK)
+    draw.text((92, 133), "The same terminal line at every shipped weight. No synthetic names.", font=faces.get(200, 29), fill=BLUE)
+    line(draw, (92, 190, 1708, 190), ORANGE, 3)
+    draw.text((92, 215), "WEIGHT", font=faces.get(600, 24), fill=MUTED)
+    draw.text((242, 215), "UPRIGHT / CODE + AMBIGUOUS GLYPHS", font=faces.get(600, 24), fill=MUTED)
+    draw.text((1415, 215), "MATCHING ITALIC", font=faces.get(600, 24), fill=MUTED)
 
-    row_top = 235
+    row_top = 270
     row_height = 91
     accents = ["#7887a8", "#8297bd", "#78a9d8", "#72c4d4", "#73e0d1", "#a6df79", "#ffd166", "#ff9f43", "#ff6b5f"]
     for row, weight in enumerate(range(100, 1000, 100)):
         y = row_top + row * row_height
-        if row % 2 == 0:
-            draw.rounded_rectangle((82, y - 7, 1718, y + 72), radius=10, fill=(18, 23, 42, 205))
-        draw.rounded_rectangle((100, y + 6, 195, y + 55), radius=8, fill=accents[row])
-        label_font = faces.get(700, 30)
-        label_w, _ = text_size(draw, str(weight), label_font)
-        draw.text((147 - label_w / 2, y + 16), str(weight), font=label_font, fill="#07101a")
+        if weight in (400, 700):
+            draw.rectangle((70, y - 8, 1730, y + 70), fill=(16, 21, 35, 205))
+        line(draw, (92, y + 72, 1708, y + 72), "#20283b", 1)
+        draw.text((92, y + 10), f"{weight}", font=faces.get(700, 30), fill=accents[row])
+        draw.text((242, y), "Goku  Agjy  0O  1Il  {}[]  =>", font=faces.get(weight, 51), fill=INK)
+        draw.text((1415, y + 13), f"// italic {weight}", font=faces.get(weight, 33, True), fill=accents[row])
 
-        sample = "Goku  Agjy  0O  1Il  {}[]  =>"
-        draw.text((236, y), sample, font=faces.get(weight, 53), fill=INK)
-        italic = "italic"
-        italic_font = faces.get(weight, 35, True)
-        italic_w, _ = text_size(draw, italic, italic_font)
-        draw.text((1668 - italic_w, y + 14), italic, font=italic_font, fill=accents[row])
-
-    draw.text((96, 1065), "100 / whisper                                                   900 / impact", font=faces.get(300, 25), fill=MUTED)
+    draw.text((92, 1110), "SOURCE ANCHORS", font=faces.get(700, 24), fill=MUTED)
+    draw.text((342, 1106), "400 / GOHU REGULAR", font=faces.get(400, 28), fill=CYAN)
+    draw.text((790, 1106), "700 / REAL GOHU BOLD", font=faces.get(700, 28), fill=ORANGE)
+    draw.text((1360, 1106), "18 FACES / ONE TTC", font=faces.get(300, 25), fill=MUTED)
     save_png(image, output, "Goku weight and italic specimen")
 
 
-def card(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], title: str, faces: Faces, accent: str) -> None:
-    draw.rounded_rectangle(box, radius=18, fill=(13, 18, 36, 235), outline=(42, 54, 88, 255), width=2)
-    x1, y1, x2, _ = box
-    draw.rounded_rectangle((x1 + 22, y1 + 20, x1 + 52, y1 + 50), radius=7, fill=accent)
-    draw.text((x1 + 70, y1 + 22), title, font=faces.get(700, 30), fill=INK)
-    line(draw, (x1 + 22, y1 + 68, x2 - 22, y1 + 68), accent, 2)
-
-
 def render_symbols(faces: Faces, output: Path) -> None:
-    image = canvas(1480, (5, 11, 24), (12, 18, 34)).convert("RGBA")
+    image = specimen_canvas(1420)
     draw = ImageDraw.Draw(image)
-    draw.text((88, 62), "THE WHOLE GLYPH UNIVERSE", font=faces.get(800, 64), fill=INK)
-    draw.text((92, 140), "Icons, dev logos, terminal graphics, Powerline, math, braille, and legacy computing.", font=faces.get(200, 30), fill=CYAN)
+    draw.text((88, 56), "GOKU / GLYPH COVERAGE", font=faces.get(800, 64), fill=INK)
+    draw.text((92, 133), "11,783 mapped codepoints rendered from the shipped TTC.", font=faces.get(200, 29), fill=CYAN)
+    line(draw, (92, 190, 1708, 190), ORANGE, 3)
+    line(draw, (900, 222, 900, 1302), "#25304a", 2)
 
-    boxes = [
-        (80, 220, 875, 575),
-        (925, 220, 1720, 575),
-        (80, 615, 875, 970),
-        (925, 615, 1720, 970),
-        (80, 1010, 875, 1365),
-        (925, 1010, 1720, 1365),
-    ]
-    card(draw, boxes[0], "NERD ICONS", faces, ORANGE)
-    card(draw, boxes[1], "DEV STACK", faces, PINK)
-    card(draw, boxes[2], "BOX + BLOCK", faces, BLUE)
-    card(draw, boxes[3], "POWERLINE + PROMPT", faces, PURPLE)
-    card(draw, boxes[4], "MATH + MOTION", faces, CYAN)
-    card(draw, boxes[5], "BRAILLE + LEGACY", faces, ORANGE)
+    section_heading(draw, faces, 92, 225, "NERD ICONS / GENERAL", ORANGE, 742)
+    section_heading(draw, faces, 958, 225, "DEVELOPMENT STACK", PINK, 750)
 
     nerd_rows = [
         "              ",
@@ -228,7 +271,7 @@ def render_symbols(faces: Faces, output: Path) -> None:
         "              ",
     ]
     for i, value in enumerate(nerd_rows):
-        draw.text((122, 312 + i * 78), value, font=faces.get(500, 48), fill=(INK, ORANGE, BLUE)[i])
+        draw.text((92, 305 + i * 78), value, font=faces.get(500, 48), fill=(INK, ORANGE, BLUE)[i])
 
     dev_rows = [
         "          ",
@@ -236,76 +279,136 @@ def render_symbols(faces: Faces, output: Path) -> None:
         "          ",
     ]
     for i, value in enumerate(dev_rows):
-        draw.text((967, 312 + i * 78), value, font=faces.get(500, 55), fill=(PINK, CYAN, PURPLE)[i])
+        draw.text((958, 305 + i * 78), value, font=faces.get(500, 55), fill=(PINK, CYAN, PURPLE)[i])
 
-    draw.text((122, 710), "╭────┬────╮  ┏━━━━┳━━━━┓", font=faces.get(400, 42), fill=BLUE)
-    draw.text((122, 768), "│ ░▒▓│█ ▌ │  ┃▖▗▘┃▙▚▟┃", font=faces.get(400, 42), fill=INK)
-    draw.text((122, 826), "╰────┴────╯  ┗━━━━┻━━━━┛", font=faces.get(400, 42), fill=BLUE)
-    draw.text((122, 893), "▁▂▃▄▅▆▇█  ▏▎▍▌▋▊▉█", font=faces.get(500, 39), fill=CYAN)
+    section_heading(draw, faces, 92, 585, "TERMINAL GEOMETRY", BLUE, 742)
+    section_heading(draw, faces, 958, 585, "POWERLINE CELLS", PURPLE, 750)
+    terminal_rows = [
+        "┌──────────┬──────────┐",
+        "│ blocks   │ ░▒▓█ ▌   │",
+        "├──────────┼──────────┤",
+        "│ braille  │ ⠋⠙⠹⠸⠼ │",
+        "└──────────┴──────────┘",
+    ]
+    for index, value in enumerate(terminal_rows):
+        draw.text((92, 657 + index * 51), value, font=faces.get(400, 36), fill=BLUE if index in (0, 2, 4) else INK)
+    draw.text((92, 930), "▁▂▃▄▅▆▇█  ▏▎▍▌▋▊▉█", font=faces.get(500, 39), fill=CYAN)
 
-    draw.text((968, 707), "        ", font=faces.get(500, 69), fill=PURPLE)
-    draw.rounded_rectangle((967, 832, 1668, 918), radius=12, fill="#4f3a82")
-    draw.text((993, 851), "  ~/goku    main  ", font=faces.get(600, 38), fill=INK)
+    draw.text((958, 675), "        ", font=faces.get(500, 62), fill=PURPLE)
+    draw_powerline_prompt(
+        draw,
+        faces,
+        958,
+        785,
+        [
+            ("  bresilla ", "#9A348E", INK),
+            (" ~/goku ", "#DA627D", INK),
+            ("  main ", "#FCA17D", "#161821"),
+        ],
+        size=34,
+    )
+    draw.text((958, 895), "CONTIGUOUS CELLS / NO GLYPH GAPS", font=faces.get(300, 25), fill=MUTED)
 
-    draw.text((122, 1102), "← ↑ → ↓  ↔ ↕  ⇐ ⇒ ⇔", font=faces.get(400, 40), fill=CYAN)
-    draw.text((122, 1165), "∃ ∅ ∆ ∈ ∊  − ∙ √ ∞ ∟", font=faces.get(500, 40), fill=INK)
-    draw.text((122, 1228), "∧ ∨ ∩ ∪  ≈ ≠ ≡ ≤ ≥", font=faces.get(500, 40), fill=ORANGE)
+    section_heading(draw, faces, 92, 1030, "MATH / MOTION / LOGIC", CYAN, 742)
+    section_heading(draw, faces, 958, 1030, "BRAILLE / LEGACY", ORANGE, 750)
+    draw.text((92, 1105), "← ↑ → ↓  ↔ ↕  ⇐ ⇒ ⇔", font=faces.get(400, 39), fill=CYAN)
+    draw.text((92, 1168), "∃ ∅ ∆ ∈ ∊  − ∙ √ ∞ ∟", font=faces.get(500, 39), fill=INK)
+    draw.text((92, 1231), "∧ ∨ ∩ ∪  ≈ ≠ ≡ ≤ ≥", font=faces.get(500, 39), fill=ORANGE)
+    draw.text((958, 1102), "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", font=faces.get(300, 48), fill=ORANGE)
+    draw.text((958, 1170), "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹", font=faces.get(500, 45), fill=INK)
+    draw.text((958, 1238), "🬀🬁🬂🬃🬄🬅  🮐🮑🮒🮔", font=faces.get(400, 45), fill=BLUE)
 
-    draw.text((968, 1096), "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", font=faces.get(300, 50), fill=ORANGE)
-    draw.text((968, 1163), "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹", font=faces.get(500, 47), fill=INK)
-    draw.text((968, 1230), "🬀🬁🬂🬃🬄🬅  🮐🮑🮒🮔", font=faces.get(400, 47), fill=BLUE)
-
-    draw.text((84, 1431), "11,000+ mapped codepoints // every showcased glyph is present in the shipped TTC // one-cell geometry", font=faces.get(300, 27), fill=MUTED)
+    draw.text((92, 1360), "EVERY GLYPH ABOVE IS PRESENT IN GOKU.TTC / FIXED 1170-UNIT CELL", font=faces.get(300, 25), fill=MUTED)
     save_png(image, output, "Goku symbols and Nerd Font icon specimen")
 
 
 def render_terminal_lab(faces: Faces, output: Path) -> None:
-    image = canvas(1180, (7, 10, 22), (10, 17, 33)).convert("RGBA")
+    image = specimen_canvas(1380)
     draw = ImageDraw.Draw(image)
-    draw.text((86, 58), "PIXEL TERMINAL LAB", font=faces.get(800, 66), fill=INK)
-    draw.text((91, 138), "A working terminal scene: text, status, plots, spinners, and native cell graphics.", font=faces.get(200, 29), fill=BLUE)
+    draw.text((88, 56), "GOKU / REAL PROMPT TEST", font=faces.get(800, 64), fill=INK)
+    draw.text((92, 133), "Actual module order, contiguous separators, and two-line prompt behavior.", font=faces.get(200, 29), fill=BLUE)
+    line(draw, (92, 190, 1708, 190), ORANGE, 3)
 
-    panel = (72, 210, 1728, 1092)
-    draw.rounded_rectangle(panel, radius=22, fill=(7, 11, 24, 250), outline=(52, 68, 108, 255), width=2)
-    draw.rectangle((72, 210, 1728, 282), fill=(20, 27, 49, 255))
-    for x, color in [(106, "#ff625f"), (143, "#ffbd44"), (180, "#00ca4e")]:
-        draw.ellipse((x, 235, x + 19, 254), fill=color)
-    draw.text((675, 231), "  goku@capsule:~/fontmake", font=faces.get(300, 28), fill=MUTED)
+    section_heading(draw, faces, 92, 222, "STARSHIP / PASTEL POWERLINE", PINK, 1616)
+    draw_powerline_prompt(
+        draw,
+        faces,
+        92,
+        292,
+        [
+            (" bresilla ", "#9A348E", INK),
+            (" ~/fontmake ", "#DA627D", INK),
+            ("  main +2 ", "#FCA17D", "#161821"),
+            ("  v1.88.0 ", "#86BBD8", "#10151e"),
+            ("  podman ", "#06969A", INK),
+            (" ♥ 14:32 ", "#33658A", INK),
+        ],
+        size=35,
+    )
+    draw.text((92, 377), "❯ make all", font=faces.get(300, 34), fill=INK)
+    draw.text((92, 429), "Built build/Goku.ttc with 18 faces", font=faces.get(200, 29), fill=CYAN)
+    draw.text((92, 473), "HarfBuzz shaping audit passed / 28 ligatures", font=faces.get(200, 29), fill=CYAN)
+    draw.text((92, 517), "Validated 212346 non-empty glyph instances", font=faces.get(200, 29), fill=CYAN)
 
-    draw.rounded_rectangle((100, 310, 810, 820), radius=14, fill=(14, 20, 38, 240), outline=(41, 57, 91, 255), width=2)
-    draw.text((128, 340), "SYSTEM // ONLINE", font=faces.get(700, 34), fill=CYAN)
-    line(draw, (128, 392, 782, 392), CYAN, 2)
-    stats = [
-        ("  CPU", "████████░░  82%", ORANGE),
-        ("  RAM", "██████░░░░  61%", BLUE),
-        ("  DISK", "████░░░░░░  43%", PURPLE),
-        ("  NET", "███░░░░░░░  28%", CYAN),
-    ]
-    for row, (label, value, color) in enumerate(stats):
-        y = 430 + row * 76
-        draw.text((128, y), label, font=faces.get(500, 30), fill=color)
-        draw.text((326, y), value, font=faces.get(300, 30), fill=INK)
-    draw.text((128, 747), "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏  compiling", font=faces.get(400, 30), fill=ORANGE)
+    section_heading(draw, faces, 92, 585, "STARSHIP / DEFAULT MODULE FLOW", BLUE, 1616)
+    draw_segments(
+        draw,
+        faces,
+        92,
+        660,
+        [
+            ("~/fontmake", 600, False, CYAN),
+            (" on ", 200, False, MUTED),
+            (" main", 600, False, PURPLE),
+            (" [!?]", 600, False, PINK),
+        ],
+        size=36,
+    )
+    draw.text((92, 715), "❯ git status --short", font=faces.get(300, 34), fill=INK)
+    draw.text((92, 766), " M src/ligatures.py", font=faces.get(200, 29), fill=ORANGE)
+    draw.text((92, 808), " M artwork/05-goku-terminal.png", font=faces.get(200, 29), fill=ORANGE)
 
-    draw.rounded_rectangle((846, 310, 1698, 820), radius=14, fill=(14, 20, 38, 240), outline=(41, 57, 91, 255), width=2)
-    draw.text((875, 340), "SIGNAL // 14 CELLS", font=faces.get(700, 34), fill=PURPLE)
-    line(draw, (875, 392, 1669, 392), PURPLE, 2)
-    draw.text((884, 425), "▁▂▃▅▆█▇▅▃▂▄▆█▇", font=faces.get(500, 55), fill=CYAN)
-    draw.text((884, 502), "⣀⣄⣤⣦⣶⣷⣿⣷⣶⣦⣤⣄⣀", font=faces.get(400, 49), fill=BLUE)
-    draw.text((884, 575), "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹", font=faces.get(500, 53), fill=INK)
-    draw.text((884, 652), "🬀🬁🬂🬃🬄🬅🬆🬇🬈🬉", font=faces.get(400, 53), fill=ORANGE)
-    draw.text((884, 729), "←↑→↓  ⇐⇒  ≠≤≥  ∧∨∩∪", font=faces.get(400, 39), fill=PURPLE)
+    section_heading(draw, faces, 92, 880, "POWERLEVEL10K / RAINBOW · TWO LINE", PURPLE, 1616)
+    draw_powerline_prompt(
+        draw,
+        faces,
+        92,
+        950,
+        [
+            ("  ", "#2E5D9F", INK),
+            (" ~/fontmake ", "#3465A4", INK),
+            ("  main !2 ", "#2E8B57", INK),
+            ("  1.88.0 ", "#8057A6", INK),
+        ],
+        size=35,
+        opening=False,
+    )
+    right_prompt = "14:32:08    86%"
+    right_width = draw.textlength(right_prompt, font=faces.get(300, 29))
+    draw.text((1708 - right_width, 966), right_prompt, font=faces.get(300, 29), fill=MUTED)
+    draw.text((92, 1033), "❯ cargo test", font=faces.get(400, 35), fill=CYAN)
+    draw.text((92, 1086), "test result: ok. 28 passed; 0 failed", font=faces.get(200, 29), fill=INK)
 
-    draw.rounded_rectangle((100, 850, 1698, 1038), radius=14, fill=(13, 18, 35, 245), outline=(41, 57, 91, 255), width=2)
-    draw.text((130, 879), "", font=faces.get(600, 52), fill=PURPLE)
-    draw.rounded_rectangle((167, 886, 506, 943), radius=4, fill="#513b84")
-    draw.text((187, 896), "  ~/fontmake", font=faces.get(600, 29), fill=INK)
-    draw.text((510, 879), "", font=faces.get(600, 52), fill=PURPLE)
-    draw.text((574, 895), "git:(main)    pixel-validate", font=faces.get(300, 30), fill=CYAN)
-    draw.text((130, 967), "$ cargo run --release  # Agjy 0O 1Il", font=faces.get(200, 31), fill=INK)
-    draw.text((1410, 970), "14ms", font=faces.get(700, 31), fill=ORANGE)
+    section_heading(draw, faces, 92, 1160, "POWERLEVEL10K / LEAN · TRANSIENT", CYAN, 1616)
+    draw_segments(
+        draw,
+        faces,
+        92,
+        1232,
+        [
+            ("~/fontmake", 600, False, BLUE),
+            ("  ", 200, False, INK),
+            ("main", 600, False, PURPLE),
+            (" !2", 600, False, ORANGE),
+            ("  ❯", 500, False, CYAN),
+        ],
+        size=34,
+    )
+    draw.text((92, 1290), "❯", font=faces.get(500, 35), fill=CYAN)
+    draw.text((135, 1290), "make release", font=faces.get(200, 34), fill=INK)
+    draw.text((92, 1340), "PROMPTS RENDERED FROM GOKU.TTC / POWERLINE GLYPHS SHARE THE TEXT BASELINE", font=faces.get(300, 23), fill=MUTED)
 
-    save_png(image, output, "Goku terminal dashboard specimen")
+    save_png(image, output, "Goku real Starship and Powerlevel10k prompt specimen")
 
 
 def draw_segments(
@@ -324,20 +427,14 @@ def draw_segments(
 
 
 def render_code(faces: Faces, output: Path) -> None:
-    image = canvas(1080, (8, 9, 20), (11, 15, 30)).convert("RGBA")
+    image = specimen_canvas(1120)
     draw = ImageDraw.Draw(image)
-    draw.text((83, 48), "GOKU // CODE AT FULL POWER", font=faces.get(800, 57), fill=INK)
-    draw.text((88, 115), "200 for flow · 600 for structure · italics for thought", font=faces.get(200, 29), fill=BLUE)
-
-    panel = (70, 178, 1730, 1005)
-    draw.rounded_rectangle(panel, radius=24, fill=(8, 12, 25, 248), outline=(51, 63, 100, 255), width=2)
-    draw.rounded_rectangle((70, 178, 1730, 249), radius=24, fill=(20, 26, 48, 255))
-    draw.rectangle((70, 220, 1730, 249), fill=(20, 26, 48, 255))
-    for x, color in [(108, "#ff625f"), (146, "#ffbd44"), (184, "#00ca4e")]:
-        draw.ellipse((x, 203, x + 20, 223), fill=color)
-    draw.text((690, 199), "~/goku/demo.rs", font=faces.get(300, 27), fill=MUTED)
-
-    draw.rounded_rectangle((91, 517, 1709, 576), radius=8, fill=(37, 49, 79, 190))
+    draw.text((88, 50), "src/render.rs", font=faces.get(600, 31), fill=INK)
+    draw.text((1450, 54), "GOKU 200 / RUST", font=faces.get(300, 24), fill=MUTED)
+    line(draw, (72, 112, 1728, 112), "#29344f", 2)
+    draw.text((88, 135), "200 for flow · 600 for structure · 200 italic for comments", font=faces.get(200, 27), fill=BLUE)
+    line(draw, (152, 195, 152, 1000), "#25304a", 2)
+    draw.rectangle((70, 500, 1730, 558), fill=(27, 36, 58, 205))
     code = [
         [("use", 600, False, PINK), (" goku::{Frame, Scene};", 200, False, INK)],
         [("// The quick brown fox jumps over the lazy dog.", 200, True, MUTED)],
@@ -351,78 +448,89 @@ def render_code(faces: Faces, output: Path) -> None:
         [("    }", 200, False, INK)],
         [("}", 200, False, INK)],
     ]
-    start_y = 282
-    line_height = 62
+    start_y = 220
+    line_height = 64
     for number, segments in enumerate(code, 1):
         y = start_y + (number - 1) * line_height
         num = f"{number:02}"
-        draw.text((108, y + 4), num, font=faces.get(200, 30), fill="#505c78")
+        draw.text((91, y + 4), num, font=faces.get(200, 28), fill="#505c78")
         if segments:
-            draw_segments(draw, faces, 190, y, segments)
+            draw_segments(draw, faces, 184, y, segments)
 
-    draw.rounded_rectangle((1170, 918, 1667, 974), radius=10, fill="#162842", outline=BLUE, width=1)
-    draw.text((1203, 934), "  compiled in 14ms", font=faces.get(500, 27), fill=CYAN)
-    draw.text((105, 941), "NORMAL 200", font=faces.get(200, 26), fill=INK)
-    draw.text((332, 941), "BOLD 600", font=faces.get(600, 26), fill=INK)
-    draw.text((535, 941), "ITALIC 200", font=faces.get(200, 26, True), fill=INK)
-    draw.text((792, 941), "BOLD ITALIC 700", font=faces.get(700, 26, True), fill=INK)
+    draw.rectangle((52, 1018, 1800, 1120), fill=(15, 21, 34, 255))
+    draw.text((88, 1040), "NORMAL 200", font=faces.get(200, 25), fill=INK)
+    draw.text((318, 1040), "BOLD 600", font=faces.get(600, 25), fill=INK)
+    draw.text((520, 1040), "ITALIC 200", font=faces.get(200, 25, True), fill=INK)
+    draw.text((775, 1040), "BOLD ITALIC 700", font=faces.get(700, 25, True), fill=INK)
+    draw.text((1375, 1040), "  0 ERRORS  ·  14ms", font=faces.get(500, 25), fill=CYAN)
     save_png(image, output, "Goku code and terminal specimen")
 
 
 def render_ligatures(faces: Faces, output: Path) -> None:
-    image = canvas(1120, (7, 10, 22), (10, 14, 29)).convert("RGBA")
+    image = specimen_canvas(1160)
     draw = ImageDraw.Draw(image)
-    draw.text((88, 58), "GOKU // NATIVE LIGATURES", font=faces.get(800, 62), fill=INK)
+    draw.text((88, 56), "GOKU / LIGATURE SHAPING", font=faces.get(800, 62), fill=INK)
     draw.text(
-        (92, 136),
-        "Original cell-grid drawings. CALT on. Cursor width preserved.",
+        (92, 133),
+        "Real code lines with CALT enabled. Every substitution preserves cursor width.",
         font=faces.get(200, 29),
         fill=CYAN,
         features=["calt"],
     )
+    line(draw, (92, 190, 1708, 190), ORANGE, 3)
+    draw.text((92, 220), "LANG", font=faces.get(600, 24), fill=MUTED)
+    draw.text((270, 220), "SOURCE / SHAPED BY GOKU", font=faces.get(600, 24), fill=MUTED)
 
     rows = [
-        ("ARROWS", "->   <-   =>   <=>   <=   >=", ORANGE),
-        ("LOGIC", "!=   !==   ==   ===   <>", CYAN),
-        ("FLOW", "::   :=   &&   ||   ++   --", PURPLE),
-        ("SHIFT", "<<   >>   <<<   >>>", ORANGE),
-        ("CODE", "..   ...   //   /*   */   </   />", CYAN),
+        ("TS", "if (cache !== null && count >= limit) return next;", PINK),
+        ("RUST", "let edge = lhs != rhs && depth <= max;", ORANGE),
+        ("C++", "node->next = ptr != nullptr ? value : fallback;", BLUE),
+        ("SHELL", "build && test || exit 1", CYAN),
+        ("HTML", "<Panel />  </main>  <!-- content -->", PURPLE),
+        ("BIT", "let packed = (value << 2) | (mask >>> 1);", ORANGE),
+        ("LOGIC", "a === b  c !== d  left <=> right  x <> y", CYAN),
     ]
     for index, (label, sample, color) in enumerate(rows):
-        y = 232 + index * 132
-        draw.rounded_rectangle((80, y - 20, 1720, y + 91), radius=14, fill=(16, 22, 42, 245))
-        draw.text((115, y + 11), label, font=faces.get(600, 27), fill=color)
+        y = 275 + index * 91
+        if index == 2:
+            draw.rectangle((70, y - 12, 1730, y + 62), fill=(25, 34, 55, 205))
+        line(draw, (92, y + 67, 1708, y + 67), "#20283b", 1)
+        draw.text((92, y + 9), label, font=faces.get(600, 25), fill=color)
         draw.text(
-            (385, y - 2),
+            (270, y),
             sample,
-            font=faces.get(200, 55),
+            font=faces.get(200, 39),
             fill=INK,
             features=["calt"],
         )
 
-    draw.text((92, 905), "ACTUAL 12PX / NEAREST-NEIGHBOR 5X", font=faces.get(500, 25), fill=MUTED)
-    small = Image.new("RGBA", (310, 30), (16, 22, 42, 255))
-    ImageDraw.Draw(small).text(
-        (4, 4),
-        "-> => != === <=> :: //",
-        font=faces.get(200, 12),
-        fill=INK,
-        features=["calt"],
-    )
-    zoom = small.resize((1550, 150), Image.Resampling.NEAREST)
-    image.alpha_composite(zoom.crop((0, 0, 1550, 100)), (125, 951))
+    line(draw, (92, 960, 1708, 960), "#33415f", 2)
+    comparison = "->  =>  !=  !==  ===  <=>  ::  &&  //"
+    draw.text((92, 995), "CALT ON", font=faces.get(700, 24), fill=CYAN)
+    draw.text((270, 980), comparison, font=faces.get(300, 43), fill=INK, features=["calt"])
+    draw.text((92, 1062), "CALT OFF", font=faces.get(700, 24), fill=MUTED)
+    draw.text((270, 1047), comparison, font=faces.get(300, 43), fill=MUTED, features=["-calt"])
+    draw.text((92, 1120), "28 NATIVE LIGATURES / EXACT TWO- OR THREE-CELL ADVANCES", font=faces.get(300, 23), fill=MUTED)
     save_png(image, output, "Goku native programming ligature specimen")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--font", type=Path, required=True)
-    parser.add_argument("--hero", type=Path, required=True)
+    parser.add_argument("--hero", type=Path)
+    parser.add_argument(
+        "--include-header",
+        action="store_true",
+        help="also regenerate 01-goku-header.png from --hero",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.include_header and args.hero is None:
+        parser.error("--include-header requires --hero")
     args.output.mkdir(parents=True, exist_ok=True)
     faces = Faces(args.font)
-    render_header(faces, args.hero, args.output / "01-goku-header.png")
+    if args.include_header:
+        render_header(faces, args.hero, args.output / "01-goku-header.png")
     render_weights(faces, args.output / "02-goku-weights.png")
     render_symbols(faces, args.output / "03-goku-symbols.png")
     render_code(faces, args.output / "04-goku-code.png")
