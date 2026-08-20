@@ -18,7 +18,7 @@ change.
 - Legible and stable from 7 px through 29 px, with special attention to the
   9–14 px range used by compact terminals.
 - Every encoded character remains in one 1170-unit cell except intentional
-  Powerline seam overlap and opt-in multi-cell ligatures.
+  Powerline seam overlap.
 - Numeric weights 100–900 and their matching italics are real static faces;
   weights 400 and 700 retain the handcrafted Regular and Bold source designs
   with the shared, documented cell-clearance transform.
@@ -39,7 +39,8 @@ These rules apply to every milestone.
    approved from a side-by-side specimen; cell-edge clearance is a deliberate
    Goku default rather than a silent source substitution.
 2. Keep the 2048 UPM, 1170-unit advance, 1609/-439 vertical metrics, zero line
-   gap, and 8x14 source-grid relationship.
+   gap, and native 8x14 Gohu proportions. Use a 24x42 final grid so the source
+   pixels scale by an exact integer factor of three.
 3. Keep Gohu's handcrafted Regular and Bold as the source of truth. Do not
    mechanically embolden Regular and call it Bold.
 4. Keep symbols and developer icons upright in italic faces unless a symbol's
@@ -253,32 +254,14 @@ Acceptance criteria:
   from Regular.
 - The README includes exact Kitty configuration examples.
 
-## P4 — Optional coding ligatures
+## P4 — Separate coding characters
 
-Target release: 1.500.
+Status: permanent design decision.
 
-Ligatures must be opt-in and must never alter stored text or cursor-cell
-behavior. Start with the registered discretionary-ligature feature (`dlig`),
-which applications normally leave disabled.
-
-- [ ] Prototype a small set: `->`, `<-`, `=>`, `<=`, `!=`, `==`, `===`, `::`,
-  `&&`, `||`, `++`, and selected comment markers.
-- [ ] Draw ligatures from the same pixel grid rather than importing a smooth
-  vector style.
-- [ ] Give each ligature exactly the summed advance of its input cells.
-- [ ] Add shaping tests for expected substitutions and false-positive contexts.
-- [ ] Test cursor movement, selection, copy/paste, and line wrapping in Kitty,
-  Alacritty, and at least one GUI editor.
-- [ ] Publish a specimen with ligatures both off and on.
-
-Acceptance criteria:
-
-- Ligatures are disabled by default.
-- Enabling them changes appearance only; underlying text and editing behavior
-  remain correct.
-- No substitution crosses whitespace, token boundaries outside the declared
-  rules, or line boundaries.
-- Terminals that do not support ligatures still receive ordinary glyphs.
+Goku contains no programming ligatures. Operators such as `->`, `=>`, `!=`,
+`===`, `::`, `&&`, and `||` always remain separate one-cell glyphs. The build
+and HarfBuzz audit reject ligature feature tags, ligature substitution lookups,
+and obsolete hidden ligature glyphs.
 
 ## P5 — Additional weight research
 
@@ -388,8 +371,7 @@ P7 evidence to date:
 - Proportional UI faces: a separate design problem that conflicts with Goku's
   terminal guarantees.
 - Automatic synthetic bold or italic: prohibited by the design constitution.
-- Default-on ligatures: reconsider only after the opt-in implementation has
-  been used successfully for a full milestone.
+- Coding ligatures: excluded from Goku; operators remain separate glyphs.
 - Arbitrary global stretching in Kitty: font geometry must be solved in Goku.
 
 ## Authoritative references

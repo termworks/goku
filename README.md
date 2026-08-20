@@ -6,7 +6,7 @@
 
 Goku is a monospaced terminal font derived from the handcrafted Gohu uni14
 bitmap design. Its complete collection—text, italics, symbols, terminal
-graphics, ligatures, and Nerd Font icons—is rebuilt on crisp terminal-aligned
+graphics, and Nerd Font icons—is rebuilt on crisp terminal-aligned
 pixel grids.
 The previews below are rendered directly from the sole release file,
 `Goku.ttc`.
@@ -14,23 +14,19 @@ The previews below are rendered directly from the sole release file,
 ## Preview
 
 <p align="center">
-  <img src="artwork/02-goku-weights.png?v=cellfix-8x14" alt="Goku weights 100 through 900" width="100%">
+  <img src="artwork/02-goku-weights.png?v=grid-3x" alt="Goku weights 100 through 900" width="100%">
 </p>
 
 <p align="center">
-  <img src="artwork/03-goku-symbols.png?v=cellfix2-8x14" alt="Goku icons, dev logos, terminal symbols, math, braille, and legacy-computing glyphs" width="100%">
+  <img src="artwork/03-goku-symbols.png?v=grid-3x" alt="Goku icons, dev logos, terminal symbols, math, braille, and legacy-computing glyphs" width="100%">
 </p>
 
 <p align="center">
-  <img src="artwork/04-goku-code.png?v=cellfix-8x14" alt="Goku code and terminal specimen" width="100%">
+  <img src="artwork/04-goku-code.png?v=grid-3x" alt="Goku code and terminal specimen" width="100%">
 </p>
 
 <p align="center">
-  <img src="artwork/05-goku-terminal.png?v=cellfix-8x14" alt="Goku terminal dashboard with icons, plots, status bars, and Powerline symbols" width="100%">
-</p>
-
-<p align="center">
-  <img src="artwork/06-goku-ligatures.png?v=cellfix-8x14" alt="Goku native programming ligatures" width="100%">
+  <img src="artwork/05-goku-terminal.png?v=grid-3x" alt="Goku terminal dashboard with icons, plots, status bars, and Powerline symbols" width="100%">
 </p>
 
 The collection contains 18 faces. Upright and italic variants are available at
@@ -60,7 +56,7 @@ visually monotonic scale around those two anchors.
 - 2048 units per em
 - 1170-unit monospaced advance, corresponding to Gohu's 8-pixel width
 - 1609-unit ascent and -439-unit descent, preserving the native 11/3 baseline
-- zero line gap, so the 14-pixel source grid fills one complete terminal cell
+- zero line gap, so the native 8×14 Gohu proportions remain unchanged
 - 1024-unit x-height and 1317-unit cap height
 
 Do not compensate with Kitty's `modify_font cell_width`: compressing the
@@ -80,9 +76,8 @@ choose a different numeric weight instead.
 - Italic affects text while terminal symbols and icons remain upright.
 - Every adjacent numeric weight produces a distinct, progressively darker
   raster at terminal sizes.
-- 28 native Goku programming ligatures cover arrows, comparisons, logic,
-  shifts, and code delimiters. They use `calt`, remain on the pixel grid, and
-  preserve the exact two- or three-cell cursor width of their source text.
+- Programming operators always remain separate characters; Goku contains no
+  ligature substitutions or hidden ligature glyphs.
 - `ss01` provides an optional dotted zero; the default zero remains slashed.
 - Fixed metadata timestamps make clean builds byte-for-byte reproducible.
 
@@ -108,9 +103,6 @@ font_features Goku-200Italic +ss01
 font_features Goku-700Italic +ss01
 ```
 
-Programming ligatures are enabled by default. Disable them for a selected face
-with `font_features Goku-200 -calt`.
-
 ## Build and verify
 
 ```sh
@@ -128,23 +120,21 @@ installed or released.
 ### Universal pixel construction
 
 The normal build converts every drawable outline—not only Gohu text, but also
-Unicode symbols, box drawing, Powerline, Nerd Font icons, ligatures,
-alternates, and `.notdef`—into grid-aligned rectangles. To rerun just its final
-validator:
+Unicode symbols, box drawing, Powerline, Nerd Font icons, alternates, and
+`.notdef`—into grid-aligned rectangles. To rerun just its final validator:
 
 ```sh
 make pixel-validate
 ```
 
 For each virtual cell, `src/pixelate_collection.py` measures the exact
-geometric intersection with the source outline. General Unicode outlines use
-a 20×35 preservation grid with a 50% coverage cutoff. Private-use Nerd Font
-icons and Powerline glyphs instead use Gohu's visibly coarse 8×14 grid with a
-25% cutoff; an isolated 5% fallback protects only hairline icons that would
-otherwise disappear. Every accepted pixel becomes a full grid-aligned
-rectangle. Multi-cell ligatures receive proportional column grids instead of
-being stretched across a single cell. The result is the normal `Goku` family
-in `build/Goku.ttc`.
+geometric intersection with the source outline. Every outline uses a 24×42
+grid—exactly 3× Gohu's native 8×14 grid. This preserves every Gohu pixel while
+giving imported Unicode symbols and Nerd icons finer detail. A 50% coverage
+cutoff is used normally; an isolated 5% fallback protects only hairline glyphs
+that would otherwise disappear. Every accepted pixel becomes a full
+grid-aligned rectangle. The result is the normal `Goku` family in
+`build/Goku.ttc`.
 
 After quantization, the build regenerates TrueType instructions for mapped text
 glyphs at 7–13px and strips them from symbols and icons. This keeps every
@@ -156,8 +146,8 @@ The grid and threshold are configurable. For example:
 
 ```sh
 make build PIXEL_COLUMNS=24 PIXEL_ROWS=42 \
-  ICON_PIXEL_COLUMNS=8 ICON_PIXEL_ROWS=14 \
-  PIXEL_THRESHOLD=0.5 ICON_PIXEL_THRESHOLD=0.25
+  ICON_PIXEL_COLUMNS=24 ICON_PIXEL_ROWS=42 \
+  PIXEL_THRESHOLD=0.5 ICON_PIXEL_THRESHOLD=0.5
 ```
 
 `make pixel-validate` rejects lost outlines, off-grid points, curves, diagonal
@@ -167,7 +157,7 @@ regressions, invalid sfnt data, and OTS failures.
 ### Regenerate the showcase
 
 The specimen PNGs are generated from the built font rather than approximated
-with a lookalike. By default this regenerates `02` through `06` without
+with a lookalike. By default this regenerates `02` through `05` without
 touching the approved Goku hero. All typography, code, icons, prompts, and
 terminal graphics are rendered from the TTC:
 

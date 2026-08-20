@@ -62,7 +62,7 @@ def autohint_face(
         "--hinting-range-min=6",
         "--hinting-range-max=13",
         "--hinting-limit=13",
-        "--fallback-script=none",
+        "--fallback-script=latn",
         "--fallback-scaling",
         f"--reference={reference_path}",
         str(source_path),
@@ -101,13 +101,26 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="goku-pixel-hints-") as directory:
         temporary = Path(directory)
-        reference_path = temporary / "Goku-400-reference.ttf"
-        reference = TTFont(args.source, fontNumber=6, recalcTimestamp=False)
-        reference.save(reference_path, reorderTables=False)
-        reference.close()
+        reference_paths: dict[bool, Path] = {}
+        for index, font in enumerate(source.fonts):
+            if font["OS/2"].usWeightClass != 400:
+                continue
+            italic = bool(font["OS/2"].fsSelection & 1)
+            path = temporary / (
+                "Goku-400Italic-reference.ttf"
+                if italic
+                else "Goku-400-reference.ttf"
+            )
+            reference = TTFont(args.source, fontNumber=index, recalcTimestamp=False)
+            reference.save(path, reorderTables=False)
+            reference.close()
+            reference_paths[italic] = path
+        if set(reference_paths) != {False, True}:
+            raise ValueError("pixel collection lacks upright and italic 400 references")
 
         for index, font in enumerate(source.fonts):
             weight = font["OS/2"].usWeightClass
+            italic = bool(font["OS/2"].fsSelection & 1)
             bdf_path = args.regular_bdf if weight <= 500 else args.bold_bdf
             text_names = text_glyph_names(font, bdf_path)
             hinted_fonts.append(
@@ -115,7 +128,7 @@ def main() -> None:
                     font,
                     temporary / f"{index:02}-unhinted.ttf",
                     temporary / f"{index:02}-hinted.ttf",
-                    reference_path,
+                    reference_paths[italic],
                     text_names,
                 )
             )

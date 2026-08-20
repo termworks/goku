@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Goku's TTC faces and OpenType substitutions with HarfBuzz."""
+"""Validate Goku's TTC faces and absence of programming ligatures."""
 
 from __future__ import annotations
 
@@ -10,9 +10,6 @@ from pathlib import Path
 
 from fontTools.ttLib import TTCollection
 
-from ligatures import LIGATURES
-
-
 CELL_WIDTH = 1170
 EXPECTED_STYLES = [
     str(weight) + (" Italic" if italic else "")
@@ -21,6 +18,37 @@ EXPECTED_STYLES = [
 ]
 PLAIN_TEXT = "0O1Il|{}[]()->!="
 SYMBOL_TEXT = "\ue0b0\uf015\U000f0001"
+PROGRAMMING_SEQUENCES = (
+    "!==",
+    "<=>",
+    "===",
+    "<<<",
+    ">>>",
+    "...",
+    "->",
+    "<-",
+    "=>",
+    "<=",
+    ">=",
+    "!=",
+    "==",
+    "<>",
+    "::",
+    ":=",
+    "&&",
+    "||",
+    "++",
+    "--",
+    "..",
+    "//",
+    "/*",
+    "*/",
+    "</",
+    "/>",
+    "<<",
+    ">>",
+)
+LIGATURE_FEATURES = {"calt", "dlig", "liga", "rlig"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -73,10 +101,19 @@ def main() -> None:
         style = style_matches.pop()
         styles.append(style)
 
+        feature_tags = {
+            record.FeatureTag
+            for record in font["GSUB"].table.FeatureList.FeatureRecord
+        }
+        assert not feature_tags & LIGATURE_FEATURES, (
+            style,
+            sorted(feature_tags & LIGATURE_FEATURES),
+        )
+
         default_zero = shape(args.collection, index, "0", "-ss01")
         dotted_zero = shape(args.collection, index, "0", "ss01")
-        plain = shape(args.collection, index, PLAIN_TEXT, "-ss01,-calt")
-        symbols = shape(args.collection, index, SYMBOL_TEXT, "-ss01,-calt")
+        plain = shape(args.collection, index, PLAIN_TEXT, "-ss01")
+        symbols = shape(args.collection, index, SYMBOL_TEXT, "-ss01")
 
         assert_cells(default_zero, 1)
         assert_cells(dotted_zero, 1)
@@ -86,18 +123,9 @@ def main() -> None:
         assert_cells(symbols, len(SYMBOL_TEXT))
         assert all(item["g"] != ".notdef" for item in plain + symbols)
 
-        shaped_ligatures = []
-        for ligature in LIGATURES:
-            disabled = shape(args.collection, index, ligature.sequence, "-calt")
-            enabled = shape(args.collection, index, ligature.sequence, "calt")
-            assert_cells(disabled, ligature.cells)
-            assert len(enabled) == 1, (ligature.sequence, enabled)
-            assert enabled[0]["g"] == ligature.name, (
-                ligature.sequence,
-                enabled,
-            )
-            assert enabled[0]["ax"] == ligature.cells * CELL_WIDTH, enabled
-            shaped_ligatures.append(ligature.sequence)
+        for sequence in PROGRAMMING_SEQUENCES:
+            shaped = shape(args.collection, index, sequence, "-ss01")
+            assert_cells(shaped, len(sequence))
 
         results.append(
             {
@@ -107,7 +135,8 @@ def main() -> None:
                 "ss01_zero": dotted_zero[0]["g"],
                 "plain_glyphs": len(plain),
                 "symbol_glyphs": [item["g"] for item in symbols],
-                "ligatures": shaped_ligatures,
+                "programming_sequences_checked": len(PROGRAMMING_SEQUENCES),
+                "ligature_substitutions": 0,
                 "advance": CELL_WIDTH,
             }
         )
@@ -135,7 +164,8 @@ def main() -> None:
         print(
             f"  face {result['face_index']} {result['style']}: "
             f"zero -> {result['default_zero']}/{result['ss01_zero']}; "
-            f"{len(result['ligatures'])} ligatures; advance {result['advance']}"
+            f"{result['programming_sequences_checked']} programming sequences "
+            f"remain separate; advance {result['advance']}"
         )
 
 

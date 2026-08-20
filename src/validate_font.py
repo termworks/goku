@@ -24,12 +24,12 @@ from design import (
     VERSION,
 )
 from font_variants import is_powerline, is_private_use
-from ligatures import LIGATURE_ADVANCES, LIGATURE_NAMES
 from text_glyphs import text_glyph_names
 
 
 EXPECTED_STYLES = {"Regular", "Bold", "Italic", "Bold Italic"}
 HINT_TABLES = {"cvt ", "fpgm", "prep"}
+LIGATURE_FEATURES = {"calt", "dlig", "liga", "rlig"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -125,6 +125,26 @@ def single_substitutions(font: TTFont, feature_tag: str) -> dict[str, str]:
     return mapping
 
 
+def ligature_lookup_count(font: TTFont) -> int:
+    """Count direct or extension-wrapped GSUB ligature substitutions."""
+    if "GSUB" not in font:
+        return 0
+    count = 0
+    for lookup in font["GSUB"].table.LookupList.Lookup:
+        for subtable in lookup.SubTable:
+            lookup_type = lookup.LookupType
+            active = subtable
+            if lookup_type == 7:
+                lookup_type = subtable.ExtensionLookupType
+                active = subtable.ExtSubTable
+            if lookup_type == 4:
+                count += sum(
+                    len(entries)
+                    for entries in getattr(active, "ligatures", {}).values()
+                )
+    return count
+
+
 def validate_icon_bounds(font: TTFont) -> int:
     cmap = font.getBestCmap()
     names_to_check = {
@@ -207,19 +227,17 @@ def main() -> None:
     assert ASCENT - DESCENT == UPM
     assert len(reference_cmap) > 10_000, "Nerd glyph set was not merged"
     assert "zero.ss01" in reference_order
-    assert LIGATURE_NAMES <= set(reference_order)
-    assert not LIGATURE_NAMES & set(reference_cmap.values())
+    assert not any(name.startswith("lig.") for name in reference_order), (
+        "obsolete programming-ligature glyphs remain"
+    )
     # The conventional control glyph `.null` has no advance; every printable
     # or terminal-addressable glyph must use the single Goku cell width.
     assert reference_widths.get(".null") == 0
     assert {
         advance
         for name, advance in reference_widths.items()
-        if name != ".null" and name not in LIGATURE_NAMES
+        if name != ".null"
     } == {CELL_WIDTH}
-    assert {
-        name: reference_widths[name] for name in LIGATURE_NAMES
-    } == LIGATURE_ADVANCES
 
     text_by_style = {
         "Regular": text_glyph_names(regular, args.regular_bdf),
@@ -266,13 +284,13 @@ def main() -> None:
             record.FeatureTag
             for record in font["GSUB"].table.FeatureList.FeatureRecord
         }
-        assert "calt" in feature_tags
-        for name, advance in LIGATURE_ADVANCES.items():
-            assert font["hmtx"].metrics[name][0] == advance
-            bounds = glyph_bounds_by_name(font, name)
-            assert bounds is not None
-            assert 0 <= bounds[0] < bounds[2] <= advance
-            assert DESCENT <= bounds[1] < bounds[3] <= ASCENT
+        assert not feature_tags & LIGATURE_FEATURES, (
+            f"{face_style}: ligature features remain: "
+            f"{sorted(feature_tags & LIGATURE_FEATURES)}"
+        )
+        assert ligature_lookup_count(font) == 0, (
+            f"{face_style}: GSUB ligature substitutions remain"
+        )
 
         text_names = text_by_style[face_style]
         hinted = {name for name in text_names if has_glyph_program(font, name)}
@@ -353,7 +371,7 @@ def main() -> None:
     print(f"  monospaced advance: {CELL_WIDTH} (.null is zero-width)")
     print(f"  full-cell block: {full_cell}")
     print("  ss01 dotted zero is available in every face")
-    print(f"  native-grid coding ligatures: {len(LIGATURE_NAMES)}")
+    print("  programming ligatures: none")
     print("  symbols/icons stay unhinted and upright in italic faces")
 
 

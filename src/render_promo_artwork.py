@@ -111,6 +111,22 @@ def draw_cell_text(
     )
 
 
+def fill_terminal_row(
+    draw: ImageDraw.ImageDraw,
+    left: float,
+    right: float,
+    top: float,
+    height: int,
+    fill: str | tuple[int, ...],
+) -> None:
+    """Fill exactly one terminal row, with no overlap or gap at its edges."""
+    x0 = round(left)
+    x1 = max(x0, round(right) - 1)
+    y0 = round(top)
+    y1 = y0 + height - 1
+    draw.rectangle((x0, y0, x1, y1), fill=fill)
+
+
 def glow_text(
     image: Image.Image,
     position: tuple[int, int],
@@ -263,7 +279,7 @@ def render_header(faces: Faces, hero_path: Path, output: Path) -> None:
 
 
 def render_weights(faces: Faces, output: Path) -> None:
-    image = specimen_canvas(1180)
+    image = specimen_canvas(860)
     draw = ImageDraw.Draw(image)
     draw.text((88, 56), "GOKU / WEIGHT PROOF", font=faces.get(800, 64), fill=INK)
     draw.text((92, 133), "The same terminal line at every shipped weight. No synthetic names.", font=faces.get(200, 29), fill=BLUE)
@@ -273,21 +289,37 @@ def render_weights(faces: Faces, output: Path) -> None:
     draw.text((1415, 215), "MATCHING ITALIC", font=faces.get(600, 24), fill=MUTED)
 
     row_top = 270
-    row_height = 91
+    sample_size = 51
+    row_height = terminal_cell_height(faces.get(400, sample_size))
     accents = ["#7887a8", "#8297bd", "#78a9d8", "#72c4d4", "#73e0d1", "#a6df79", "#ffd166", "#ff9f43", "#ff6b5f"]
     for row, weight in enumerate(range(100, 1000, 100)):
         y = row_top + row * row_height
         if weight in (400, 700):
-            draw.rectangle((70, y - 8, 1730, y + 70), fill=(16, 21, 35, 205))
-        line(draw, (92, y + 72, 1708, y + 72), "#20283b", 1)
-        draw.text((92, y + 10), f"{weight}", font=faces.get(700, 30), fill=accents[row])
-        draw.text((242, y), "Goku  Agjy  0O  1Il  {}[]  =>", font=faces.get(weight, 51), fill=INK)
-        draw.text((1415, y + 13), f"// italic {weight}", font=faces.get(weight, 33, True), fill=accents[row])
+            fill_terminal_row(draw, 70, 1731, y, row_height, (16, 21, 35, 205))
+        line(draw, (92, y + row_height - 1, 1708, y + row_height - 1), "#20283b", 1)
+        draw_cell_text(draw, (92, y), f"{weight}", faces.get(700, 30), accents[row], cell_height=row_height)
+        draw_cell_text(
+            draw,
+            (242, y),
+            "Goku  Agjy  0O  1Il  {}[]  =>",
+            faces.get(weight, sample_size),
+            INK,
+            cell_height=row_height,
+        )
+        draw_cell_text(
+            draw,
+            (1415, y),
+            f"// italic {weight}",
+            faces.get(weight, 33, True),
+            accents[row],
+            cell_height=row_height,
+        )
 
-    draw.text((92, 1110), "SOURCE ANCHORS", font=faces.get(700, 24), fill=MUTED)
-    draw.text((342, 1106), "400 / GOHU REGULAR", font=faces.get(400, 28), fill=CYAN)
-    draw.text((790, 1106), "700 / REAL GOHU BOLD", font=faces.get(700, 28), fill=ORANGE)
-    draw.text((1360, 1106), "18 FACES / ONE TTC", font=faces.get(300, 25), fill=MUTED)
+    footer_y = row_top + 9 * row_height + 48
+    draw.text((92, footer_y), "SOURCE ANCHORS", font=faces.get(700, 24), fill=MUTED)
+    draw.text((342, footer_y - 4), "400 / GOHU REGULAR", font=faces.get(400, 28), fill=CYAN)
+    draw.text((790, footer_y - 4), "700 / REAL GOHU BOLD", font=faces.get(700, 28), fill=ORANGE)
+    draw.text((1360, footer_y - 4), "18 FACES / ONE TTC", font=faces.get(300, 25), fill=MUTED)
     save_png(image, output, "Goku weight and italic specimen")
 
 
@@ -307,16 +339,20 @@ def render_symbols(faces: Faces, output: Path) -> None:
         "              ",
         "              ",
     ]
+    nerd_font = faces.get(500, 48)
+    nerd_line_height = terminal_cell_height(nerd_font)
     for i, value in enumerate(nerd_rows):
-        draw.text((92, 305 + i * 78), value, font=faces.get(500, 48), fill=(INK, ORANGE, BLUE)[i])
+        draw_cell_text(draw, (92, 305 + i * nerd_line_height), value, nerd_font, (INK, ORANGE, BLUE)[i])
 
     dev_rows = [
         "          ",
         "          ",
         "          ",
     ]
+    dev_font = faces.get(500, 55)
+    dev_line_height = terminal_cell_height(dev_font)
     for i, value in enumerate(dev_rows):
-        draw.text((958, 305 + i * 78), value, font=faces.get(500, 55), fill=(PINK, CYAN, PURPLE)[i])
+        draw_cell_text(draw, (958, 305 + i * dev_line_height), value, dev_font, (PINK, CYAN, PURPLE)[i])
 
     section_heading(draw, faces, 92, 585, "TERMINAL GEOMETRY", BLUE, 742)
     section_heading(draw, faces, 958, 585, "POWERLINE CELLS", PURPLE, 750)
@@ -359,25 +395,55 @@ def render_symbols(faces: Faces, output: Path) -> None:
 
     section_heading(draw, faces, 92, 1030, "MATH / MOTION / LOGIC", CYAN, 742)
     section_heading(draw, faces, 958, 1030, "BRAILLE / LEGACY", ORANGE, 750)
-    draw.text((92, 1105), "← ↑ → ↓  ↔ ↕  ⇐ ⇒ ⇔", font=faces.get(400, 39), fill=CYAN)
-    draw.text((92, 1168), "∃ ∅ ∆ ∈ ∊  − ∙ √ ∞ ∟", font=faces.get(500, 39), fill=INK)
-    draw.text((92, 1231), "∧ ∨ ∩ ∪  ≈ ≠ ≡ ≤ ≥", font=faces.get(500, 39), fill=ORANGE)
-    draw.text((958, 1102), "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", font=faces.get(300, 48), fill=ORANGE)
-    draw.text((958, 1170), "🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹", font=faces.get(500, 45), fill=INK)
-    draw.text((958, 1238), "🬀🬁🬂🬃🬄🬅  🮐🮑🮒🮔", font=faces.get(400, 45), fill=BLUE)
+    math_font = faces.get(400, 39)
+    math_line_height = terminal_cell_height(math_font)
+    math_rows = [
+        ("← ↑ → ↓  ↔ ↕  ⇐ ⇒ ⇔", 400, CYAN),
+        ("∃ ∅ ∆ ∈ ∊  − ∙ √ ∞ ∟", 500, INK),
+        ("∧ ∨ ∩ ∪  ≈ ≠ ≡ ≤ ≥", 500, ORANGE),
+    ]
+    for index, (value, weight, color) in enumerate(math_rows):
+        draw_cell_text(
+            draw,
+            (92, 1105 + index * math_line_height),
+            value,
+            faces.get(weight, 39),
+            color,
+            cell_height=math_line_height,
+        )
+
+    legacy_size = 45
+    legacy_line_height = terminal_cell_height(faces.get(400, legacy_size))
+    legacy_rows = [
+        ("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", 300, ORANGE),
+        ("🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹", 500, INK),
+        ("🬀🬁🬂🬃🬄🬅  🮐🮑🮒🮔", 400, BLUE),
+    ]
+    for index, (value, weight, color) in enumerate(legacy_rows):
+        draw_cell_text(
+            draw,
+            (958, 1105 + index * legacy_line_height),
+            value,
+            faces.get(weight, legacy_size),
+            color,
+            cell_height=legacy_line_height,
+        )
 
     draw.text((92, 1360), "EVERY GLYPH ABOVE IS PRESENT IN GOKU.TTC / FIXED 1170-UNIT CELL", font=faces.get(300, 25), fill=MUTED)
     save_png(image, output, "Goku symbols and Nerd Font icon specimen")
 
 
 def render_terminal_lab(faces: Faces, output: Path) -> None:
-    image = specimen_canvas(1380)
+    image = specimen_canvas(1220)
     draw = ImageDraw.Draw(image)
     draw.text((88, 56), "GOKU / REAL PROMPT TEST", font=faces.get(800, 64), fill=INK)
     draw.text((92, 133), "Actual module order, contiguous separators, and two-line prompt behavior.", font=faces.get(200, 29), fill=BLUE)
     line(draw, (92, 190, 1708, 190), ORANGE, 3)
 
     section_heading(draw, faces, 92, 222, "STARSHIP / PASTEL POWERLINE", PINK, 1616)
+    terminal_size = 35
+    terminal_line_height = terminal_cell_height(faces.get(400, terminal_size))
+    first_row = 292
     draw_powerline_prompt(
         draw,
         faces,
@@ -391,44 +457,69 @@ def render_terminal_lab(faces: Faces, output: Path) -> None:
             ("  podman ", "#06969A", INK),
             (" ♥ 14:32 ", "#33658A", INK),
         ],
-        size=35,
+        size=terminal_size,
     )
-    draw.text((92, 377), "❯ make all", font=faces.get(300, 34), fill=INK)
-    draw.text((92, 429), "Built build/Goku.ttc with 18 faces", font=faces.get(200, 29), fill=CYAN)
-    draw.text((92, 473), "HarfBuzz shaping audit passed / 28 ligatures", font=faces.get(200, 29), fill=CYAN)
-    draw.text((92, 517), "Validated 212346 non-empty glyph instances", font=faces.get(200, 29), fill=CYAN)
+    first_rows = [
+        ("❯ make all", 300, INK),
+        ("Built build/Goku.ttc with 18 faces", 200, CYAN),
+        ("HarfBuzz audit passed / code operators stay separate", 200, CYAN),
+        ("Validated 211842 non-empty glyph instances", 200, CYAN),
+    ]
+    for index, (value, weight, color) in enumerate(first_rows, 1):
+        draw_cell_text(
+            draw,
+            (92, first_row + index * terminal_line_height),
+            value,
+            faces.get(weight, terminal_size),
+            color,
+            cell_height=terminal_line_height,
+        )
 
-    section_heading(draw, faces, 92, 585, "STARSHIP / DEFAULT MODULE FLOW", BLUE, 1616)
+    section_heading(draw, faces, 92, 520, "STARSHIP / DEFAULT MODULE FLOW", BLUE, 1616)
+    second_row = 590
     draw_segments(
         draw,
         faces,
         92,
-        660,
+        second_row,
         [
             ("~/fontmake", 600, False, CYAN),
             (" on ", 200, False, MUTED),
             (" main", 600, False, PURPLE),
             (" [!?]", 600, False, PINK),
         ],
-        size=36,
+        size=terminal_size,
+        cell_height=terminal_line_height,
     )
-    draw.text((92, 715), "❯ git status --short", font=faces.get(300, 34), fill=INK)
-    draw.text((92, 766), " M src/ligatures.py", font=faces.get(200, 29), fill=ORANGE)
-    draw.text((92, 808), " M artwork/05-goku-terminal.png", font=faces.get(200, 29), fill=ORANGE)
+    second_rows = [
+        ("❯ git status --short", 300, INK),
+        (" M src/pixelate_collection.py", 200, ORANGE),
+        (" M artwork/05-goku-terminal.png", 200, ORANGE),
+    ]
+    for index, (value, weight, color) in enumerate(second_rows, 1):
+        draw_cell_text(
+            draw,
+            (92, second_row + index * terminal_line_height),
+            value,
+            faces.get(weight, terminal_size),
+            color,
+            cell_height=terminal_line_height,
+        )
 
-    section_heading(draw, faces, 92, 880, "POWERLEVEL10K / RAINBOW · TWO LINE", PURPLE, 1616)
+    section_heading(draw, faces, 92, 780, "POWERLEVEL10K / RAINBOW · TWO LINE", PURPLE, 1616)
+    third_row = 850
     draw_powerline_prompt(
         draw,
         faces,
         92,
-        950,
+        third_row,
         [
             ("  ", "#2E5D9F", INK),
             (" ~/fontmake ", "#3465A4", INK),
             ("  main !2 ", "#2E8B57", INK),
             ("  1.88.0 ", "#8057A6", INK),
         ],
-        size=35,
+        size=terminal_size,
         opening=False,
     )
     right_prompt = "14:32:08    86%"
@@ -436,21 +527,36 @@ def render_terminal_lab(faces: Faces, output: Path) -> None:
     right_width = draw.textlength(right_prompt, font=right_font)
     draw_cell_text(
         draw,
-        (1708 - right_width, 950),
+        (1708 - right_width, third_row),
         right_prompt,
         right_font,
         MUTED,
-        cell_height=terminal_cell_height(faces.get(600, 35)),
+        cell_height=terminal_line_height,
     )
-    draw.text((92, 1033), "❯ cargo test", font=faces.get(400, 35), fill=CYAN)
-    draw.text((92, 1086), "test result: ok. 28 passed; 0 failed", font=faces.get(200, 29), fill=INK)
+    draw_cell_text(
+        draw,
+        (92, third_row + terminal_line_height),
+        "❯ cargo test",
+        faces.get(400, terminal_size),
+        CYAN,
+        cell_height=terminal_line_height,
+    )
+    draw_cell_text(
+        draw,
+        (92, third_row + 2 * terminal_line_height),
+        "test result: ok. 28 passed; 0 failed",
+        faces.get(200, terminal_size),
+        INK,
+        cell_height=terminal_line_height,
+    )
 
-    section_heading(draw, faces, 92, 1160, "POWERLEVEL10K / LEAN · TRANSIENT", CYAN, 1616)
+    section_heading(draw, faces, 92, 1000, "POWERLEVEL10K / LEAN · TRANSIENT", CYAN, 1616)
+    fourth_row = 1070
     draw_segments(
         draw,
         faces,
         92,
-        1232,
+        fourth_row,
         [
             ("~/fontmake", 600, False, BLUE),
             ("  ", 200, False, INK),
@@ -458,11 +564,19 @@ def render_terminal_lab(faces: Faces, output: Path) -> None:
             (" !2", 600, False, ORANGE),
             ("  ❯", 500, False, CYAN),
         ],
-        size=34,
+        size=terminal_size,
+        cell_height=terminal_line_height,
     )
-    draw.text((92, 1290), "❯", font=faces.get(500, 35), fill=CYAN)
-    draw.text((135, 1290), "make release", font=faces.get(200, 34), fill=INK)
-    draw.text((92, 1340), "PROMPTS RENDERED FROM GOKU.TTC / POWERLINE GLYPHS SHARE THE TEXT BASELINE", font=faces.get(300, 23), fill=MUTED)
+    draw_segments(
+        draw,
+        faces,
+        92,
+        fourth_row + terminal_line_height,
+        [("❯", 500, False, CYAN), (" make release", 200, False, INK)],
+        size=terminal_size,
+        cell_height=terminal_line_height,
+    )
+    draw.text((92, 1175), "PROMPTS RENDERED FROM GOKU.TTC / POWERLINE GLYPHS SHARE THE TEXT BASELINE", font=faces.get(300, 23), fill=MUTED)
 
     save_png(image, output, "Goku real Starship and Powerlevel10k prompt specimen")
 
@@ -474,23 +588,22 @@ def draw_segments(
     y: float,
     segments: list[tuple[str, int, bool, str]],
     size: int = 39,
+    cell_height: int | None = None,
 ) -> None:
     cursor = x
     for value, weight, italic, color in segments:
         font = faces.get(weight, size, italic)
-        draw_cell_text(draw, (cursor, y), value, font, color)
+        draw_cell_text(draw, (cursor, y), value, font, color, cell_height=cell_height)
         cursor += draw.textlength(value, font=font)
 
 
 def render_code(faces: Faces, output: Path) -> None:
-    image = specimen_canvas(1120)
+    image = specimen_canvas(740)
     draw = ImageDraw.Draw(image)
     draw.text((88, 50), "src/render.rs", font=faces.get(600, 31), fill=INK)
     draw.text((1450, 54), "GOKU 200 / RUST", font=faces.get(300, 24), fill=MUTED)
     line(draw, (72, 112, 1728, 112), "#29344f", 2)
     draw.text((88, 135), "200 for flow · 600 for structure · 200 italic for comments", font=faces.get(200, 27), fill=BLUE)
-    line(draw, (152, 195, 152, 1000), "#25304a", 2)
-    draw.rectangle((70, 500, 1730, 558), fill=(27, 36, 58, 205))
     code = [
         [("use", 600, False, PINK), (" goku::{Frame, Scene};", 200, False, INK)],
         [("// The quick brown fox jumps over the lazy dog.", 200, True, MUTED)],
@@ -505,69 +618,51 @@ def render_code(faces: Faces, output: Path) -> None:
         [("}", 200, False, INK)],
     ]
     start_y = 220
-    line_height = 64
+    code_size = 39
+    line_height = terminal_cell_height(faces.get(200, code_size))
+    active_line = 6
+    fill_terminal_row(
+        draw,
+        70,
+        1731,
+        start_y + (active_line - 1) * line_height,
+        line_height,
+        (27, 36, 58, 205),
+    )
+    line(draw, (152, start_y, 152, start_y + len(code) * line_height), "#25304a", 2)
     for number, segments in enumerate(code, 1):
         y = start_y + (number - 1) * line_height
         num = f"{number:02}"
-        draw.text((91, y + 4), num, font=faces.get(200, 28), fill="#505c78")
-        if segments:
-            draw_segments(draw, faces, 184, y, segments)
-
-    draw.rectangle((52, 1018, 1800, 1120), fill=(15, 21, 34, 255))
-    draw.text((88, 1040), "NORMAL 200", font=faces.get(200, 25), fill=INK)
-    draw.text((318, 1040), "BOLD 600", font=faces.get(600, 25), fill=INK)
-    draw.text((520, 1040), "ITALIC 200", font=faces.get(200, 25, True), fill=INK)
-    draw.text((775, 1040), "BOLD ITALIC 700", font=faces.get(700, 25, True), fill=INK)
-    draw.text((1375, 1040), "  0 ERRORS  ·  14ms", font=faces.get(500, 25), fill=CYAN)
-    save_png(image, output, "Goku code and terminal specimen")
-
-
-def render_ligatures(faces: Faces, output: Path) -> None:
-    image = specimen_canvas(1160)
-    draw = ImageDraw.Draw(image)
-    draw.text((88, 56), "GOKU / LIGATURE SHAPING", font=faces.get(800, 62), fill=INK)
-    draw.text(
-        (92, 133),
-        "Real code lines with CALT enabled. Every substitution preserves cursor width.",
-        font=faces.get(200, 29),
-        fill=CYAN,
-        features=["calt"],
-    )
-    line(draw, (92, 190, 1708, 190), ORANGE, 3)
-    draw.text((92, 220), "LANG", font=faces.get(600, 24), fill=MUTED)
-    draw.text((270, 220), "SOURCE / SHAPED BY GOKU", font=faces.get(600, 24), fill=MUTED)
-
-    rows = [
-        ("TS", "if (cache !== null && count >= limit) return next;", PINK),
-        ("RUST", "let edge = lhs != rhs && depth <= max;", ORANGE),
-        ("C++", "node->next = ptr != nullptr ? value : fallback;", BLUE),
-        ("SHELL", "build && test || exit 1", CYAN),
-        ("HTML", "<Panel />  </main>  <!-- content -->", PURPLE),
-        ("BIT", "let packed = (value << 2) | (mask >>> 1);", ORANGE),
-        ("LOGIC", "a === b  c !== d  left <=> right  x <> y", CYAN),
-    ]
-    for index, (label, sample, color) in enumerate(rows):
-        y = 275 + index * 91
-        if index == 2:
-            draw.rectangle((70, y - 12, 1730, y + 62), fill=(25, 34, 55, 205))
-        line(draw, (92, y + 67, 1708, y + 67), "#20283b", 1)
-        draw.text((92, y + 9), label, font=faces.get(600, 25), fill=color)
-        draw.text(
-            (270, y),
-            sample,
-            font=faces.get(200, 39),
-            fill=INK,
-            features=["calt"],
+        draw_cell_text(
+            draw,
+            (91, y),
+            num,
+            faces.get(200, 28),
+            "#505c78",
+            cell_height=line_height,
         )
+        if segments:
+            draw_segments(draw, faces, 184, y, segments, size=code_size, cell_height=line_height)
 
-    line(draw, (92, 960, 1708, 960), "#33415f", 2)
-    comparison = "->  =>  !=  !==  ===  <=>  ::  &&  //"
-    draw.text((92, 995), "CALT ON", font=faces.get(700, 24), fill=CYAN)
-    draw.text((270, 980), comparison, font=faces.get(300, 43), fill=INK, features=["calt"])
-    draw.text((92, 1062), "CALT OFF", font=faces.get(700, 24), fill=MUTED)
-    draw.text((270, 1047), comparison, font=faces.get(300, 43), fill=MUTED, features=["-calt"])
-    draw.text((92, 1120), "28 NATIVE LIGATURES / EXACT TWO- OR THREE-CELL ADVANCES", font=faces.get(300, 23), fill=MUTED)
-    save_png(image, output, "Goku native programming ligature specimen")
+    status_top = 700
+    fill_terminal_row(draw, 52, 1800, status_top, line_height, (15, 21, 34, 255))
+    status_items = [
+        (88, "NORMAL 200", 200, False, INK),
+        (318, "BOLD 600", 600, False, INK),
+        (520, "ITALIC 200", 200, True, INK),
+        (775, "BOLD ITALIC 700", 700, True, INK),
+        (1375, "  0 ERRORS  ·  14ms", 500, False, CYAN),
+    ]
+    for x, value, weight, italic, color in status_items:
+        draw_cell_text(
+            draw,
+            (x, status_top),
+            value,
+            faces.get(weight, 25, italic),
+            color,
+            cell_height=line_height,
+        )
+    save_png(image, output, "Goku code and terminal specimen")
 
 
 def main() -> None:
@@ -591,7 +686,6 @@ def main() -> None:
     render_symbols(faces, args.output / "03-goku-symbols.png")
     render_code(faces, args.output / "04-goku-code.png")
     render_terminal_lab(faces, args.output / "05-goku-terminal.png")
-    render_ligatures(faces, args.output / "06-goku-ligatures.png")
 
 
 if __name__ == "__main__":

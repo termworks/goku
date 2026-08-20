@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--icon-threshold", required=True, type=float)
     parser.add_argument("--icon-fallback-threshold", required=True, type=float)
     parser.add_argument("--threshold", required=True, type=float)
+    parser.add_argument("--fallback-threshold", required=True, type=float)
     parser.add_argument("--weight-contrast", required=True, type=float)
     parser.add_argument("--budgets", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
@@ -105,6 +106,8 @@ def build(args: argparse.Namespace, output: Path, log: Path) -> float:
                 str(args.icon_fallback_threshold),
                 "--threshold",
                 str(args.threshold),
+                "--fallback-threshold",
+                str(args.fallback_threshold),
                 "--weight-contrast",
                 str(args.weight_contrast),
                 "--family",
@@ -188,6 +191,7 @@ def main() -> None:
             "icon_threshold": args.icon_threshold,
             "icon_fallback_threshold": args.icon_fallback_threshold,
             "threshold": args.threshold,
+            "fallback_threshold": args.fallback_threshold,
             "weight_contrast": args.weight_contrast,
         },
         "reference": {

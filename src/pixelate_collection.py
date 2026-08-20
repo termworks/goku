@@ -73,6 +73,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument(
+        "--fallback-threshold",
+        type=float,
+        default=0.05,
+        help="lower cutoff used only when a non-icon source outline vanishes",
+    )
+    parser.add_argument(
         "--weight-contrast",
         type=float,
         default=0.0,
@@ -96,6 +102,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("all grid dimensions must be positive")
     if not 0 <= args.threshold <= 1:
         parser.error("--threshold must be between 0 and 1")
+    if not 0 <= args.fallback_threshold <= args.threshold:
+        parser.error("--fallback-threshold must be between 0 and --threshold")
     if not 0 <= args.icon_threshold <= 1:
         parser.error("--icon-threshold must be between 0 and 1")
     if not 0 <= args.icon_fallback_threshold <= args.icon_threshold:
@@ -120,7 +128,7 @@ def grid_boundaries(start: int, end: int, count: int) -> tuple[int, ...]:
 
 
 def grid_columns_for_advance(advance: int, columns_per_cell: int) -> int:
-    """Keep pixels square when a ligature spans multiple terminal cells."""
+    """Scale the horizontal grid for any glyph spanning multiple cells."""
     return max(1, rounded_ratio(columns_per_cell * advance, CELL_WIDTH))
 
 
@@ -175,8 +183,8 @@ def private_use_glyphs(font: TTFont) -> frozenset[str]:
     """Return every glyph encoded in a Unicode private-use area.
 
     Nerd Fonts places its patched icon sets and Powerline symbols in these
-    ranges. They need Gohu's visibly coarse 8x14 construction rather than the
-    finer preservation grid used for arbitrary Unicode outlines.
+    ranges. They use the separately configurable icon grid and coverage cutoff
+    rather than the text defaults.
     """
     return frozenset(
         glyph_name
@@ -335,6 +343,7 @@ def pixelate_face(
     icon_threshold: float,
     icon_fallback_threshold: float,
     threshold: float,
+    fallback_threshold: float,
     weight_contrast: float,
     weight_sensitive: frozenset[str],
     cache: dict[tuple[object, ...], frozenset[tuple[int, int]]],
@@ -358,6 +367,7 @@ def pixelate_face(
     cache_hits = 0
     contrast_fallbacks = 0
     icon_fallbacks = 0
+    preservation_fallbacks = 0
     glyph_count = len(font.getGlyphOrder())
     weight = font["OS/2"].usWeightClass
     text_threshold = threshold_for_weight(threshold, weight, weight_contrast)
@@ -456,6 +466,37 @@ def pixelate_face(
                 cache_hits += 1
             if pixels:
                 contrast_fallbacks += 1
+        if (
+            not pixels
+            and not is_icon
+            and fallback_threshold < neutral_threshold
+        ):
+            fallback_key = (
+                x_boundaries,
+                y_boundaries,
+                fallback_threshold,
+                recording,
+            )
+            pixels = cache.get(fallback_key)
+            if pixels is None:
+                try:
+                    pixels = occupied_pixels(
+                        recording,
+                        x_boundaries,
+                        y_boundaries,
+                        fallback_threshold,
+                        rectangles,
+                    )
+                except pathops.PathOpsError as error:
+                    raise ValueError(
+                        f"could not preserve face {face_index} glyph "
+                        f"{glyph_name} at the fallback threshold"
+                    ) from error
+                cache[fallback_key] = pixels
+            else:
+                cache_hits += 1
+            if pixels:
+                preservation_fallbacks += 1
         target = pixel_glyph(pixels, x_boundaries, y_boundaries)
         glyf[glyph_name] = target
         if pixels:
@@ -483,6 +524,7 @@ def pixelate_face(
         "cache_hits": cache_hits,
         "contrast_fallbacks": contrast_fallbacks,
         "icon_fallbacks": icon_fallbacks,
+        "preservation_fallbacks": preservation_fallbacks,
         "vanished_count": len(vanished),
         "vanished_sample": vanished[:40],
         "x_grid": columns,
@@ -493,6 +535,7 @@ def pixelate_face(
         "icon_threshold": icon_threshold,
         "icon_fallback_threshold": icon_fallback_threshold,
         "base_threshold": threshold,
+        "fallback_threshold": fallback_threshold,
         "weight_threshold": text_threshold,
         "ascent": ascent,
         "descent": descent,
@@ -528,6 +571,7 @@ def main() -> None:
                 args.icon_threshold,
                 args.icon_fallback_threshold,
                 args.threshold,
+                args.fallback_threshold,
                 args.weight_contrast,
                 weight_sensitive,
                 cache,
@@ -561,6 +605,7 @@ def main() -> None:
         "icon_threshold": args.icon_threshold,
         "icon_fallback_threshold": args.icon_fallback_threshold,
         "threshold": args.threshold,
+        "fallback_threshold": args.fallback_threshold,
         "weight_contrast": args.weight_contrast,
         "weight_sensitive_glyphs": len(weight_sensitive),
         "faces": reports,
