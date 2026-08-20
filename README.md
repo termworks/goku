@@ -13,23 +13,23 @@ The previews below are rendered directly from the sole release file,
 ## Preview
 
 <p align="center">
-  <img src="artwork/02-goku-weights.png" alt="Goku weights 100 through 900" width="100%">
+  <img src="artwork/02-goku-weights.png?v=d4368ab" alt="Goku weights 100 through 900" width="100%">
 </p>
 
 <p align="center">
-  <img src="artwork/03-goku-symbols.png" alt="Goku icons, dev logos, terminal symbols, math, braille, and legacy-computing glyphs" width="100%">
+  <img src="artwork/03-goku-symbols.png?v=d4368ab" alt="Goku icons, dev logos, terminal symbols, math, braille, and legacy-computing glyphs" width="100%">
 </p>
 
 <p align="center">
-  <img src="artwork/04-goku-code.png" alt="Goku code and terminal specimen" width="100%">
+  <img src="artwork/04-goku-code.png?v=d4368ab" alt="Goku code and terminal specimen" width="100%">
 </p>
 
 <p align="center">
-  <img src="artwork/05-goku-terminal.png" alt="Goku terminal dashboard with icons, plots, status bars, and Powerline symbols" width="100%">
+  <img src="artwork/05-goku-terminal.png?v=d4368ab" alt="Goku terminal dashboard with icons, plots, status bars, and Powerline symbols" width="100%">
 </p>
 
 <p align="center">
-  <img src="artwork/06-goku-ligatures.png" alt="Goku native programming ligatures" width="100%">
+  <img src="artwork/06-goku-ligatures.png?v=d4368ab" alt="Goku native programming ligatures" width="100%">
 </p>
 
 The collection contains 18 faces. Upright and italic variants are available at
