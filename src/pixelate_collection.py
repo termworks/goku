@@ -20,6 +20,7 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTCollection, TTFont
 
 from design import CELL_WIDTH
+from font_variants import is_private_use
 
 
 # Experimental weight-aware thresholds are disabled by default. A common
@@ -46,6 +47,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--columns", type=int, default=20)
     parser.add_argument("--rows", type=int, default=35)
+    parser.add_argument(
+        "--icon-columns",
+        type=int,
+        default=8,
+        help="coarse horizontal grid for private-use Nerd Font icons",
+    )
+    parser.add_argument(
+        "--icon-rows",
+        type=int,
+        default=14,
+        help="coarse vertical grid for private-use Nerd Font icons",
+    )
+    parser.add_argument(
+        "--icon-threshold",
+        type=float,
+        default=0.25,
+        help="coverage cutoff for coarse private-use icon pixels",
+    )
+    parser.add_argument(
+        "--icon-fallback-threshold",
+        type=float,
+        default=0.05,
+        help="lower cutoff used only when the normal coarse icon pass is empty",
+    )
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument(
         "--weight-contrast",
@@ -67,10 +92,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
-    if args.columns <= 0 or args.rows <= 0:
-        parser.error("--columns and --rows must be positive")
+    if min(args.columns, args.rows, args.icon_columns, args.icon_rows) <= 0:
+        parser.error("all grid dimensions must be positive")
     if not 0 <= args.threshold <= 1:
         parser.error("--threshold must be between 0 and 1")
+    if not 0 <= args.icon_threshold <= 1:
+        parser.error("--icon-threshold must be between 0 and 1")
+    if not 0 <= args.icon_fallback_threshold <= args.icon_threshold:
+        parser.error(
+            "--icon-fallback-threshold must be between 0 and --icon-threshold"
+        )
     if not 0 <= args.weight_contrast <= 2:
         parser.error("--weight-contrast must be between 0 and 2")
     if args.source.resolve() == args.output.resolve():
@@ -137,6 +168,20 @@ def weight_sensitive_glyphs(fonts: list[TTFont]) -> frozenset[str]:
         for glyph_name in light_order
         if frozen_recording(lightest, glyph_name)
         != frozen_recording(heaviest, glyph_name)
+    )
+
+
+def private_use_glyphs(font: TTFont) -> frozenset[str]:
+    """Return every glyph encoded in a Unicode private-use area.
+
+    Nerd Fonts places its patched icon sets and Powerline symbols in these
+    ranges. They need Gohu's visibly coarse 8x14 construction rather than the
+    finer preservation grid used for arbitrary Unicode outlines.
+    """
+    return frozenset(
+        glyph_name
+        for codepoint, glyph_name in font.getBestCmap().items()
+        if is_private_use(codepoint)
     )
 
 
@@ -285,6 +330,10 @@ def pixelate_face(
     face_index: int,
     columns: int,
     rows: int,
+    icon_columns: int,
+    icon_rows: int,
+    icon_threshold: float,
+    icon_fallback_threshold: float,
     threshold: float,
     weight_contrast: float,
     weight_sensitive: frozenset[str],
@@ -297,7 +346,9 @@ def pixelate_face(
     descent = font["hhea"].descent
     if ascent <= descent:
         raise ValueError(f"face {face_index} has invalid vertical metrics")
-    y_boundaries = grid_boundaries(descent, ascent, rows)
+    text_y_boundaries = grid_boundaries(descent, ascent, rows)
+    icon_y_boundaries = grid_boundaries(descent, ascent, icon_rows)
+    icon_names = private_use_glyphs(font)
     glyf = font["glyf"]
     metrics = font["hmtx"].metrics
     processed = 0
@@ -306,6 +357,7 @@ def pixelate_face(
     total_pixels = 0
     cache_hits = 0
     contrast_fallbacks = 0
+    icon_fallbacks = 0
     glyph_count = len(font.getGlyphOrder())
     weight = font["OS/2"].usWeightClass
     text_threshold = threshold_for_weight(threshold, weight, weight_contrast)
@@ -318,11 +370,17 @@ def pixelate_face(
             metrics[glyph_name] = (advance, 0)
             continue
         source_nonempty += 1
-        glyph_columns = grid_columns_for_advance(advance, columns)
+        is_icon = glyph_name in icon_names
+        active_columns = icon_columns if is_icon else columns
+        y_boundaries = icon_y_boundaries if is_icon else text_y_boundaries
+        glyph_columns = grid_columns_for_advance(advance, active_columns)
         x_boundaries = grid_boundaries(0, advance, glyph_columns)
         recording = frozen_recording(font, glyph_name)
+        neutral_threshold = icon_threshold if is_icon else threshold
         glyph_threshold = (
-            text_threshold if glyph_name in weight_sensitive else threshold
+            text_threshold
+            if not is_icon and glyph_name in weight_sensitive
+            else neutral_threshold
         )
         key = (x_boundaries, y_boundaries, glyph_threshold, recording)
         pixels = cache.get(key)
@@ -342,10 +400,13 @@ def pixelate_face(
             cache[key] = pixels
         else:
             cache_hits += 1
-        if not pixels and glyph_threshold != threshold:
-            # A stronger light-weight cutoff must never erase a valid source
-            # glyph. Fall back only this outline to the neutral cutoff.
-            fallback_key = (x_boundaries, y_boundaries, threshold, recording)
+        if not pixels and is_icon and icon_fallback_threshold < icon_threshold:
+            fallback_key = (
+                x_boundaries,
+                y_boundaries,
+                icon_fallback_threshold,
+                recording,
+            )
             pixels = cache.get(fallback_key)
             if pixels is None:
                 try:
@@ -353,7 +414,36 @@ def pixelate_face(
                         recording,
                         x_boundaries,
                         y_boundaries,
-                        threshold,
+                        icon_fallback_threshold,
+                        rectangles,
+                    )
+                except pathops.PathOpsError as error:
+                    raise ValueError(
+                        f"could not preserve coarse icon in face "
+                        f"{face_index} glyph {glyph_name}"
+                    ) from error
+                cache[fallback_key] = pixels
+            else:
+                cache_hits += 1
+            if pixels:
+                icon_fallbacks += 1
+        if not pixels and glyph_threshold != neutral_threshold:
+            # A stronger light-weight cutoff must never erase a valid source
+            # glyph. Fall back only this outline to the neutral cutoff.
+            fallback_key = (
+                x_boundaries,
+                y_boundaries,
+                neutral_threshold,
+                recording,
+            )
+            pixels = cache.get(fallback_key)
+            if pixels is None:
+                try:
+                    pixels = occupied_pixels(
+                        recording,
+                        x_boundaries,
+                        y_boundaries,
+                        neutral_threshold,
                         rectangles,
                     )
                 except pathops.PathOpsError as error:
@@ -392,10 +482,16 @@ def pixelate_face(
         "occupied_pixels": total_pixels,
         "cache_hits": cache_hits,
         "contrast_fallbacks": contrast_fallbacks,
+        "icon_fallbacks": icon_fallbacks,
         "vanished_count": len(vanished),
         "vanished_sample": vanished[:40],
         "x_grid": columns,
         "y_grid": rows,
+        "icon_glyphs": len(icon_names),
+        "icon_x_grid": icon_columns,
+        "icon_y_grid": icon_rows,
+        "icon_threshold": icon_threshold,
+        "icon_fallback_threshold": icon_fallback_threshold,
         "base_threshold": threshold,
         "weight_threshold": text_threshold,
         "ascent": ascent,
@@ -427,6 +523,10 @@ def main() -> None:
                 face_index,
                 args.columns,
                 args.rows,
+                args.icon_columns,
+                args.icon_rows,
+                args.icon_threshold,
+                args.icon_fallback_threshold,
                 args.threshold,
                 args.weight_contrast,
                 weight_sensitive,
@@ -456,6 +556,10 @@ def main() -> None:
         "output": str(args.output),
         "columns": args.columns,
         "rows": args.rows,
+        "icon_columns": args.icon_columns,
+        "icon_rows": args.icon_rows,
+        "icon_threshold": args.icon_threshold,
+        "icon_fallback_threshold": args.icon_fallback_threshold,
         "threshold": args.threshold,
         "weight_contrast": args.weight_contrast,
         "weight_sensitive_glyphs": len(weight_sensitive),

@@ -24,6 +24,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference", required=True, type=Path)
     parser.add_argument("--columns", required=True, type=int)
     parser.add_argument("--rows", required=True, type=int)
+    parser.add_argument("--icon-columns", required=True, type=int)
+    parser.add_argument("--icon-rows", required=True, type=int)
+    parser.add_argument("--icon-threshold", required=True, type=float)
+    parser.add_argument("--icon-fallback-threshold", required=True, type=float)
     parser.add_argument("--threshold", required=True, type=float)
     parser.add_argument("--weight-contrast", required=True, type=float)
     parser.add_argument("--budgets", required=True, type=Path)
@@ -91,6 +95,14 @@ def build(args: argparse.Namespace, output: Path, log: Path) -> float:
                 str(args.columns),
                 "--rows",
                 str(args.rows),
+                "--icon-columns",
+                str(args.icon_columns),
+                "--icon-rows",
+                str(args.icon_rows),
+                "--icon-threshold",
+                str(args.icon_threshold),
+                "--icon-fallback-threshold",
+                str(args.icon_fallback_threshold),
                 "--threshold",
                 str(args.threshold),
                 "--weight-contrast",
@@ -171,6 +183,10 @@ def main() -> None:
         "pixel_grid": {
             "columns": args.columns,
             "rows": args.rows,
+            "icon_columns": args.icon_columns,
+            "icon_rows": args.icon_rows,
+            "icon_threshold": args.icon_threshold,
+            "icon_fallback_threshold": args.icon_fallback_threshold,
             "threshold": args.threshold,
             "weight_contrast": args.weight_contrast,
         },

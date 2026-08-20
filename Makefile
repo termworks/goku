@@ -7,6 +7,10 @@ GOKU_OUTPUT := build/Goku.ttc
 GOKU_FAMILY ?= Goku
 PIXEL_COLUMNS ?= 20
 PIXEL_ROWS ?= 35
+ICON_PIXEL_COLUMNS ?= 8
+ICON_PIXEL_ROWS ?= 14
+ICON_PIXEL_THRESHOLD ?= 0.25
+ICON_PIXEL_FALLBACK_THRESHOLD ?= 0.05
 PIXEL_THRESHOLD ?= 0.5
 PIXEL_WEIGHT_CONTRAST ?= 0.0
 PIXEL_REPORT := build/reports/pixelation.json
@@ -35,14 +39,14 @@ pixel: build
 
 $(GOKU_UNHINTED_OUTPUT): $(GOKU_VECTOR_OUTPUT) src/pixelate_collection.py
 	mkdir -p "$(dir $@)" "$(dir $(PIXEL_REPORT))"
-	python src/pixelate_collection.py --source "$(GOKU_VECTOR_OUTPUT)" --output "$@" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)" --threshold "$(PIXEL_THRESHOLD)" --weight-contrast "$(PIXEL_WEIGHT_CONTRAST)" --family "$(GOKU_FAMILY)" --report "$(PIXEL_REPORT)"
+	python src/pixelate_collection.py --source "$(GOKU_VECTOR_OUTPUT)" --output "$@" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)" --icon-columns "$(ICON_PIXEL_COLUMNS)" --icon-rows "$(ICON_PIXEL_ROWS)" --icon-threshold "$(ICON_PIXEL_THRESHOLD)" --icon-fallback-threshold "$(ICON_PIXEL_FALLBACK_THRESHOLD)" --threshold "$(PIXEL_THRESHOLD)" --weight-contrast "$(PIXEL_WEIGHT_CONTRAST)" --family "$(GOKU_FAMILY)" --report "$(PIXEL_REPORT)"
 
 $(GOKU_OUTPUT): $(GOKU_UNHINTED_OUTPUT) src/hint_pixel_collection.py src/text_glyphs.py src/bdf.py src/design.py $(GOHU_REGULAR_BDF) $(GOHU_BOLD_BDF)
 	mkdir -p "$(dir $@)"
 	python src/hint_pixel_collection.py --source "$(GOKU_UNHINTED_OUTPUT)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --output "$@"
 
 pixel-validate: build weight-audit
-	python src/validate_pixelated_collection.py --source "$(GOKU_VECTOR_OUTPUT)" --candidate "$(GOKU_OUTPUT)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)"
+	python src/validate_pixelated_collection.py --source "$(GOKU_VECTOR_OUTPUT)" --candidate "$(GOKU_OUTPUT)" --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)" --icon-columns "$(ICON_PIXEL_COLUMNS)" --icon-rows "$(ICON_PIXEL_ROWS)"
 	mkdir -p "$(PIXEL_QUALITY_DIR)/ots"
 	ots-sanitize "$(GOKU_OUTPUT)" "$(PIXEL_QUALITY_DIR)/ots/Goku-sanitized.ttc"
 	python src/shaping_audit.py --collection "$(GOKU_OUTPUT)" --report "$(PIXEL_QUALITY_DIR)/harfbuzz.json"
@@ -117,7 +121,7 @@ sfnt-audit-report:
 	python src/sfnt_audit.py --collection "$(QUALITY_FONT)" --sources SOURCES.md --gohu-license vendor/gohufont/COPYING-LICENSE --report "$(QUALITY_DIR)/sfnt.json" --report-only
 
 reproducible:
-	python src/reproducibility_audit.py --base-builder src/build_goku_collection.py --weight-builder src/build_weight_collection.py --pixel-builder src/pixelate_collection.py --hint-builder src/hint_pixel_collection.py --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --reference "$(GOKU_OUTPUT)" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)" --threshold "$(PIXEL_THRESHOLD)" --weight-contrast "$(PIXEL_WEIGHT_CONTRAST)" --budgets quality/budgets.json --report "$(QUALITY_DIR)/reproducibility.json"
+	python src/reproducibility_audit.py --base-builder src/build_goku_collection.py --weight-builder src/build_weight_collection.py --pixel-builder src/pixelate_collection.py --hint-builder src/hint_pixel_collection.py --regular-bdf "$(GOHU_REGULAR_BDF)" --bold-bdf "$(GOHU_BOLD_BDF)" --reference "$(GOKU_OUTPUT)" --columns "$(PIXEL_COLUMNS)" --rows "$(PIXEL_ROWS)" --icon-columns "$(ICON_PIXEL_COLUMNS)" --icon-rows "$(ICON_PIXEL_ROWS)" --icon-threshold "$(ICON_PIXEL_THRESHOLD)" --icon-fallback-threshold "$(ICON_PIXEL_FALLBACK_THRESHOLD)" --threshold "$(PIXEL_THRESHOLD)" --weight-contrast "$(PIXEL_WEIGHT_CONTRAST)" --budgets quality/budgets.json --report "$(QUALITY_DIR)/reproducibility.json"
 
 release: validate ots harfbuzz sfnt-audit reproducible
 	python src/prepare_release.py --font "$(GOKU_OUTPUT)" --output-dir "$(RELEASE_DIR)" --reproducibility-report "$(QUALITY_DIR)/reproducibility.json" --notices THIRD_PARTY_NOTICES.md --release-notes RELEASE_NOTES.md --gohu-license "vendor/gohufont/COPYING-LICENSE"

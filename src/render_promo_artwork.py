@@ -80,6 +80,37 @@ def text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont
     return right - left, bottom - top
 
 
+def terminal_cell_height(font: ImageFont.FreeTypeFont) -> int:
+    """Return the real line cell implied by the TTC's ascent and descent."""
+    ascent, descent = font.getmetrics()
+    return ascent + descent
+
+
+def draw_cell_text(
+    draw: ImageDraw.ImageDraw,
+    position: tuple[float, float],
+    value: str,
+    font: ImageFont.FreeTypeFont,
+    fill: str | tuple[int, ...],
+    *,
+    cell_height: int | None = None,
+    **kwargs: object,
+) -> None:
+    """Draw from a measured terminal baseline instead of a guessed y offset."""
+    x, y = position
+    ascent, descent = font.getmetrics()
+    natural_height = ascent + descent
+    top = y if cell_height is None else y + (cell_height - natural_height) / 2
+    draw.text(
+        (x, top + ascent),
+        value,
+        font=font,
+        fill=fill,
+        anchor="ls",
+        **kwargs,
+    )
+
+
 def glow_text(
     image: Image.Image,
     position: tuple[int, int],
@@ -158,28 +189,34 @@ def draw_powerline_prompt(
     size: int = 38,
     opening: bool = True,
 ) -> float:
-    """Render contiguous Powerline modules with real color-transition cells."""
+    """Render modules on the TTC's exact line cell and baseline."""
     font = faces.get(600, size)
     cursor = x
-    height = size + 22
-    text_y = y + 7
+    height = terminal_cell_height(font)
+    top = round(y)
+    bottom = round(y + height) - 1
+
+    def fill_cell(start: float, end: float, color: str) -> None:
+        left = round(start)
+        right = max(left, round(end) - 1)
+        draw.rectangle((left, top, right, bottom), fill=color)
 
     if opening:
         opening_width = draw.textlength("", font=font)
-        draw.text((cursor, text_y), "", font=font, fill=segments[0][1])
+        draw_cell_text(draw, (cursor, y), "", font, segments[0][1])
         cursor += opening_width
 
     for index, (value, background, foreground) in enumerate(segments):
         value_width = draw.textlength(value, font=font)
-        draw.rectangle((cursor, y, cursor + value_width + 1, y + height), fill=background)
-        draw.text((cursor, text_y), value, font=font, fill=foreground)
+        fill_cell(cursor, cursor + value_width, background)
+        draw_cell_text(draw, (cursor, y), value, font, foreground)
         cursor += value_width
 
         separator = ""
         separator_width = draw.textlength(separator, font=font)
         next_background = segments[index + 1][1] if index + 1 < len(segments) else BG
-        draw.rectangle((cursor, y, cursor + separator_width + 1, y + height), fill=next_background)
-        draw.text((cursor, text_y), separator, font=font, fill=background)
+        fill_cell(cursor, cursor + separator_width, next_background)
+        draw_cell_text(draw, (cursor, y), separator, font, background)
         cursor += separator_width
     return cursor
 
@@ -287,14 +324,25 @@ def render_symbols(faces: Faces, output: Path) -> None:
         "┌──────────┬──────────┐",
         "│ blocks   │ ░▒▓█ ▌   │",
         "├──────────┼──────────┤",
-        "│ braille  │ ⠋⠙⠹⠸⠼ │",
+        "│ braille  │ ⠋⠙⠹⠸⠼    │",
         "└──────────┴──────────┘",
     ]
+    expected_columns = len(terminal_rows[0])
+    if any(len(value) != expected_columns for value in terminal_rows):
+        raise ValueError("terminal geometry rows must have identical cell counts")
+    terminal_font = faces.get(400, 36)
+    terminal_line_height = terminal_cell_height(terminal_font)
     for index, value in enumerate(terminal_rows):
-        draw.text((92, 657 + index * 51), value, font=faces.get(400, 36), fill=BLUE if index in (0, 2, 4) else INK)
+        draw_cell_text(
+            draw,
+            (92, 657 + index * terminal_line_height),
+            value,
+            terminal_font,
+            BLUE if index in (0, 2, 4) else INK,
+        )
     draw.text((92, 930), "▁▂▃▄▅▆▇█  ▏▎▍▌▋▊▉█", font=faces.get(500, 39), fill=CYAN)
 
-    draw.text((958, 675), "        ", font=faces.get(500, 62), fill=PURPLE)
+    draw_cell_text(draw, (958, 675), "        ", faces.get(500, 62), PURPLE)
     draw_powerline_prompt(
         draw,
         faces,
@@ -384,8 +432,16 @@ def render_terminal_lab(faces: Faces, output: Path) -> None:
         opening=False,
     )
     right_prompt = "14:32:08    86%"
-    right_width = draw.textlength(right_prompt, font=faces.get(300, 29))
-    draw.text((1708 - right_width, 966), right_prompt, font=faces.get(300, 29), fill=MUTED)
+    right_font = faces.get(300, 29)
+    right_width = draw.textlength(right_prompt, font=right_font)
+    draw_cell_text(
+        draw,
+        (1708 - right_width, 950),
+        right_prompt,
+        right_font,
+        MUTED,
+        cell_height=terminal_cell_height(faces.get(600, 35)),
+    )
     draw.text((92, 1033), "❯ cargo test", font=faces.get(400, 35), fill=CYAN)
     draw.text((92, 1086), "test result: ok. 28 passed; 0 failed", font=faces.get(200, 29), fill=INK)
 
@@ -422,7 +478,7 @@ def draw_segments(
     cursor = x
     for value, weight, italic, color in segments:
         font = faces.get(weight, size, italic)
-        draw.text((cursor, y), value, font=font, fill=color)
+        draw_cell_text(draw, (cursor, y), value, font, color)
         cursor += draw.textlength(value, font=font)
 
 

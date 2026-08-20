@@ -16,6 +16,7 @@ from pixelate_collection import (
     grid_boundaries as ordered_grid_boundaries,
     occupied_pixels,
     pixel_glyph,
+    private_use_glyphs,
 )
 from text_glyphs import text_glyph_names
 
@@ -33,6 +34,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bold-bdf", required=True, type=Path)
     parser.add_argument("--columns", required=True, type=int)
     parser.add_argument("--rows", required=True, type=int)
+    parser.add_argument("--icon-columns", required=True, type=int)
+    parser.add_argument("--icon-rows", required=True, type=int)
     return parser.parse_args()
 
 
@@ -63,8 +66,10 @@ def validate_face(
     face_index: int,
     columns: int,
     rows: int,
+    icon_columns: int,
+    icon_rows: int,
     bdf_path: Path,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     assert source.getGlyphOrder() == candidate.getGlyphOrder(), (
         f"face {face_index}: glyph order changed"
     )
@@ -90,22 +95,32 @@ def validate_face(
     )
 
     glyf = candidate["glyf"]
-    y_grid = grid_boundaries(
+    text_y_grid = grid_boundaries(
         candidate["hhea"].descent,
         candidate["hhea"].ascent,
         rows,
+    )
+    icon_y_grid = grid_boundaries(
+        candidate["hhea"].descent,
+        candidate["hhea"].ascent,
+        icon_rows,
     )
     checked = 0
     contours = 0
     hinted_text = 0
     hinted_nontext: list[str] = []
     text_names = text_glyph_names(candidate, bdf_path)
+    icon_names = private_use_glyphs(candidate)
+    coarse_icons = 0
     for name in sorted(candidate_drawn):
         glyph = glyf[name]
         assert not glyph.isComposite(), f"face {face_index} {name}: composite"
         glyph.expand(glyf)
         advance = candidate["hmtx"].metrics[name][0]
-        glyph_columns = grid_columns_for_advance(advance, columns)
+        is_icon = name in icon_names
+        active_columns = icon_columns if is_icon else columns
+        y_grid = icon_y_grid if is_icon else text_y_grid
+        glyph_columns = grid_columns_for_advance(advance, active_columns)
         x_grid = grid_boundaries(0, advance, glyph_columns)
         coordinates = glyph.coordinates
         assert all(x in x_grid and y in y_grid for x, y in coordinates), (
@@ -114,6 +129,8 @@ def validate_face(
         assert all(flag & 1 for flag in glyph.flags), (
             f"face {face_index} {name}: contains a curve point"
         )
+        if is_icon:
+            coarse_icons += 1
         start = 0
         for end in glyph.endPtsOfContours:
             contour = coordinates[start : end + 1]
@@ -171,7 +188,7 @@ def validate_face(
             candidate["glyf"]
         ), f"face {face_index}: {character} lost its neutral pixel silhouette"
 
-    return checked, contours, hinted_text
+    return checked, contours, hinted_text, coarse_icons
 
 
 def validate_weight_rasters(path: Path, collection: TTCollection) -> int:
@@ -211,24 +228,30 @@ def main() -> None:
     assert len(source.fonts) == len(candidate.fonts), "face count changed"
     total_glyphs = 0
     total_contours = 0
+    total_coarse_icons = 0
     for face_index, (source_face, candidate_face) in enumerate(
         zip(source.fonts, candidate.fonts)
     ):
         weight = source_face["OS/2"].usWeightClass
         bdf_path = args.regular_bdf if weight <= 500 else args.bold_bdf
-        checked, contours, hinted = validate_face(
+        checked, contours, hinted, coarse_icons = validate_face(
             source_face,
             candidate_face,
             face_index,
             args.columns,
             args.rows,
+            args.icon_columns,
+            args.icon_rows,
             bdf_path,
         )
         total_glyphs += checked
         total_contours += contours
+        total_coarse_icons += coarse_icons
         print(
             f"  face {face_index:02}: {checked} non-empty grid glyphs, "
-            f"{contours} rectangular runs, {hinted} hinted text glyphs"
+            f"{contours} rectangular runs, {hinted} hinted text glyphs, "
+            f"{coarse_icons} private-use glyphs on the "
+            f"{args.icon_columns}x{args.icon_rows} icon grid"
         )
     raster_checks = validate_weight_rasters(args.candidate, candidate)
     source.close()
@@ -236,6 +259,7 @@ def main() -> None:
     print(
         f"Validated {len(source.fonts)} faces, {total_glyphs} non-empty glyphs, "
         f"{total_contours} grid-aligned rectangular runs, and "
+        f"{total_coarse_icons} coarse icon instances, and "
         f"{raster_checks} ordered weight rasters"
     )
 
