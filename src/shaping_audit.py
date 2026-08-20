@@ -10,6 +10,8 @@ from pathlib import Path
 
 from fontTools.ttLib import TTCollection
 
+from ligatures import LIGATURES
+
 
 CELL_WIDTH = 1170
 EXPECTED_STYLES = [
@@ -43,8 +45,8 @@ def shape(collection: Path, index: int, text: str, features: str) -> list[dict]:
             f"--face-index={index}",
             f"--features={features}",
             "--output-format=json",
+            f"--text={text}",
             str(collection),
-            text,
         ),
         check=True,
         capture_output=True,
@@ -73,8 +75,8 @@ def main() -> None:
 
         default_zero = shape(args.collection, index, "0", "-ss01")
         dotted_zero = shape(args.collection, index, "0", "ss01")
-        plain = shape(args.collection, index, PLAIN_TEXT, "-ss01")
-        symbols = shape(args.collection, index, SYMBOL_TEXT, "-ss01")
+        plain = shape(args.collection, index, PLAIN_TEXT, "-ss01,-calt")
+        symbols = shape(args.collection, index, SYMBOL_TEXT, "-ss01,-calt")
 
         assert_cells(default_zero, 1)
         assert_cells(dotted_zero, 1)
@@ -84,6 +86,19 @@ def main() -> None:
         assert_cells(symbols, len(SYMBOL_TEXT))
         assert all(item["g"] != ".notdef" for item in plain + symbols)
 
+        shaped_ligatures = []
+        for ligature in LIGATURES:
+            disabled = shape(args.collection, index, ligature.sequence, "-calt")
+            enabled = shape(args.collection, index, ligature.sequence, "calt")
+            assert_cells(disabled, ligature.cells)
+            assert len(enabled) == 1, (ligature.sequence, enabled)
+            assert enabled[0]["g"] == ligature.name, (
+                ligature.sequence,
+                enabled,
+            )
+            assert enabled[0]["ax"] == ligature.cells * CELL_WIDTH, enabled
+            shaped_ligatures.append(ligature.sequence)
+
         results.append(
             {
                 "face_index": index,
@@ -92,6 +107,7 @@ def main() -> None:
                 "ss01_zero": dotted_zero[0]["g"],
                 "plain_glyphs": len(plain),
                 "symbol_glyphs": [item["g"] for item in symbols],
+                "ligatures": shaped_ligatures,
                 "advance": CELL_WIDTH,
             }
         )
@@ -119,7 +135,7 @@ def main() -> None:
         print(
             f"  face {result['face_index']} {result['style']}: "
             f"zero -> {result['default_zero']}/{result['ss01_zero']}; "
-            f"advance {result['advance']}"
+            f"{len(result['ligatures'])} ligatures; advance {result['advance']}"
         )
 
 

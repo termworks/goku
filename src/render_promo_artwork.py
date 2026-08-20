@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Render release artwork with the real Goku Pixel TTC faces.
+"""Render release artwork with the real Goku TTC faces.
 
 The hero illustration is an input.  Every letter, symbol, and icon layered on
-top of it is rendered from Goku-Pixel.ttc, so specimen images stay truthful to
+top of it is rendered from Goku.ttc, so specimen images stay truthful to
 the font users actually install.
 """
 
@@ -38,7 +38,12 @@ class Faces:
             if weight not in range(100, 1000, 100):
                 raise ValueError(f"unsupported weight: {weight}")
             index = ((weight // 100) - 1) * 2 + int(italic)
-            self.cache[key] = ImageFont.truetype(self.path, size=size, index=index)
+            self.cache[key] = ImageFont.truetype(
+                self.path,
+                size=size,
+                index=index,
+                layout_engine=ImageFont.Layout.RAQM,
+            )
         return self.cache[key]
 
 
@@ -112,8 +117,8 @@ def crop_cover(image: Image.Image, width: int, height: int) -> Image.Image:
 def save_png(image: Image.Image, path: Path, description: str) -> None:
     info = PngImagePlugin.PngInfo()
     info.add_text("Title", description)
-    info.add_text("Font", f"Goku Pixel {VERSION}")
-    info.add_text("Typography", "Rendered directly from Goku-Pixel.ttc")
+    info.add_text("Font", f"Goku {VERSION}")
+    info.add_text("Typography", "Rendered directly from Goku.ttc")
     image.convert("RGB").save(path, format="PNG", optimize=True, pnginfo=info)
 
 
@@ -300,7 +305,7 @@ def render_terminal_lab(faces: Faces, output: Path) -> None:
     draw.text((130, 967), "$ cargo run --release  # Agjy 0O 1Il", font=faces.get(200, 31), fill=INK)
     draw.text((1410, 970), "14ms", font=faces.get(700, 31), fill=ORANGE)
 
-    save_png(image, output, "Goku Pixel terminal dashboard specimen")
+    save_png(image, output, "Goku terminal dashboard specimen")
 
 
 def draw_segments(
@@ -364,6 +369,51 @@ def render_code(faces: Faces, output: Path) -> None:
     save_png(image, output, "Goku code and terminal specimen")
 
 
+def render_ligatures(faces: Faces, output: Path) -> None:
+    image = canvas(1120, (7, 10, 22), (10, 14, 29)).convert("RGBA")
+    draw = ImageDraw.Draw(image)
+    draw.text((88, 58), "GOKU // NATIVE LIGATURES", font=faces.get(800, 62), fill=INK)
+    draw.text(
+        (92, 136),
+        "Original cell-grid drawings. CALT on. Cursor width preserved.",
+        font=faces.get(200, 29),
+        fill=CYAN,
+        features=["calt"],
+    )
+
+    rows = [
+        ("ARROWS", "->   <-   =>   <=>   <=   >=", ORANGE),
+        ("LOGIC", "!=   !==   ==   ===   <>", CYAN),
+        ("FLOW", "::   :=   &&   ||   ++   --", PURPLE),
+        ("SHIFT", "<<   >>   <<<   >>>", ORANGE),
+        ("CODE", "..   ...   //   /*   */   </   />", CYAN),
+    ]
+    for index, (label, sample, color) in enumerate(rows):
+        y = 232 + index * 132
+        draw.rounded_rectangle((80, y - 20, 1720, y + 91), radius=14, fill=(16, 22, 42, 245))
+        draw.text((115, y + 11), label, font=faces.get(600, 27), fill=color)
+        draw.text(
+            (385, y - 2),
+            sample,
+            font=faces.get(200, 55),
+            fill=INK,
+            features=["calt"],
+        )
+
+    draw.text((92, 905), "ACTUAL 12PX / NEAREST-NEIGHBOR 5X", font=faces.get(500, 25), fill=MUTED)
+    small = Image.new("RGBA", (310, 30), (16, 22, 42, 255))
+    ImageDraw.Draw(small).text(
+        (4, 4),
+        "-> => != === <=> :: //",
+        font=faces.get(200, 12),
+        fill=INK,
+        features=["calt"],
+    )
+    zoom = small.resize((1550, 150), Image.Resampling.NEAREST)
+    image.alpha_composite(zoom.crop((0, 0, 1550, 100)), (125, 951))
+    save_png(image, output, "Goku native programming ligature specimen")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--font", type=Path, required=True)
@@ -377,6 +427,7 @@ def main() -> None:
     render_symbols(faces, args.output / "03-goku-symbols.png")
     render_code(faces, args.output / "04-goku-code.png")
     render_terminal_lab(faces, args.output / "05-goku-terminal.png")
+    render_ligatures(faces, args.output / "06-goku-ligatures.png")
 
 
 if __name__ == "__main__":

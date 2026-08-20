@@ -18,7 +18,7 @@ jobs:
   release:
     name: Build and publish release
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 75
     permissions:
       contents: write
     steps:
@@ -34,11 +34,12 @@ jobs:
       - name: Build reproducible release assets
         run: nix develop path:$PWD --command make clean release
 
-      - name: Verify the release font and checksum
+      - name: Verify release font and checksums
         run: |
           test -s dist/Goku.ttc
           cd dist
           sha256sum --check Goku.ttc.sha256
+          sha256sum --check SHA256SUMS
 
       - name: Resolve release tag
         id: release_tag
@@ -61,7 +62,7 @@ jobs:
 
           echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
 
-      - name: Upload raw font workflow artifact
+      - name: Upload raw Goku font workflow artifact
         uses: actions/upload-artifact@v7
         with:
           path: dist/Goku.ttc
@@ -73,6 +74,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
         run: |
+          assets=(
+            "dist/Goku.ttc#Goku pixel-grid TrueType Collection"
+            "dist/Goku.ttc.sha256#Goku SHA-256 checksum"
+            "dist/SHA256SUMS#Combined SHA-256 checksums"
+            "dist/release.json#Release manifest"
+            "dist/THIRD_PARTY_NOTICES.md#Third-party notices"
+            "dist/GohuFont-WTFPL.txt#GohuFont license"
+          )
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+            gh release edit "$RELEASE_TAG" \
+              --title "Goku ${RELEASE_TAG#v}" \
+              --notes-file dist/RELEASE_NOTES.md
+            exit 0
+          fi
+
           if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
             tag_args=(--verify-tag)
           else
@@ -80,11 +98,7 @@ jobs:
           fi
 
           gh release create "$RELEASE_TAG" \
-            "dist/Goku.ttc#Goku TrueType Collection" \
-            "dist/Goku.ttc.sha256#SHA-256 checksum" \
-            "dist/release.json#Release manifest" \
-            "dist/THIRD_PARTY_NOTICES.md#Third-party notices" \
-            "dist/GohuFont-WTFPL.txt#GohuFont license" \
+            "${assets[@]}" \
             "${tag_args[@]}" \
             --title "Goku ${RELEASE_TAG#v}" \
             --notes-file dist/RELEASE_NOTES.md

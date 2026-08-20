@@ -12,6 +12,7 @@ from PIL import ImageFont
 
 from pixelate_collection import (
     frozen_recording,
+    grid_columns_for_advance,
     grid_boundaries as ordered_grid_boundaries,
     occupied_pixels,
     pixel_glyph,
@@ -104,7 +105,8 @@ def validate_face(
         assert not glyph.isComposite(), f"face {face_index} {name}: composite"
         glyph.expand(glyf)
         advance = candidate["hmtx"].metrics[name][0]
-        x_grid = grid_boundaries(0, advance, columns)
+        glyph_columns = grid_columns_for_advance(advance, columns)
+        x_grid = grid_boundaries(0, advance, glyph_columns)
         coordinates = glyph.coordinates
         assert all(x in x_grid and y in y_grid for x, y in coordinates), (
             f"face {face_index} {name}: coordinate is off-grid"
@@ -153,7 +155,8 @@ def validate_face(
     for character in DESCENDER_SAMPLE:
         name = cmap[ord(character)]
         advance = source["hmtx"].metrics[name][0]
-        ordered_x = ordered_grid_boundaries(0, advance, columns)
+        glyph_columns = grid_columns_for_advance(advance, columns)
+        ordered_x = ordered_grid_boundaries(0, advance, glyph_columns)
         pixels = occupied_pixels(
             frozen_recording(source, name),
             ordered_x,

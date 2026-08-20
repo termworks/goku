@@ -26,6 +26,7 @@ from font_variants import (
     normalize_nerd_icons,
     set_style,
 )
+from ligatures import add_programming_ligatures
 from terminal_graphics import apply_native_terminal_graphics
 from text_glyphs import text_glyph_names
 
@@ -161,6 +162,13 @@ def main() -> None:
             add_text_cell_clearance(font, text_glyphs)
         italicize(italic, regular_text)
         italicize(bold_italic, bold_text)
+        for font, is_bold in (
+            (regular, False),
+            (bold, True),
+            (italic, False),
+            (bold_italic, True),
+        ):
+            add_programming_ligatures(font, bold=is_bold)
 
         face_data = (
             ("Regular", regular, False, False, regular_text),

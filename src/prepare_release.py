@@ -68,7 +68,7 @@ def name(font, name_id: int) -> str:
     return value
 
 
-def inspect_faces(path: Path) -> list[dict]:
+def inspect_faces(path: Path, family: str, postscript_stem: str) -> list[dict]:
     collection = TTCollection(path, lazy=True)
     try:
         if len(collection.fonts) != 18:
@@ -84,7 +84,11 @@ def inspect_faces(path: Path) -> list[dict]:
                 )
             weight = int(style.split()[0])
             italic = style.endswith(" Italic")
-            expected_postscript = f"Goku-{weight}{'Italic' if italic else ''}"
+            expected_postscript = (
+                f"{postscript_stem}-{weight}{'Italic' if italic else ''}"
+            )
+            if name(font, 16) != family:
+                raise ValueError(f"unexpected family name for {style}")
             if name(font, 6) != expected_postscript:
                 raise ValueError(f"unexpected PostScript name for {style}")
             if name(font, 5) != f"Version {VERSION}; Goku":
@@ -116,27 +120,37 @@ def main() -> None:
     if not candidate["byte_identical"] or not candidate["matches_release"]:
         raise ValueError("release was not reproduced byte-for-byte")
 
-    faces = inspect_faces(args.font)
-    sha256 = digest(args.font)
-    if candidate["sha256"] != sha256:
+    faces = inspect_faces(args.font, "Goku", "Goku")
+    font_sha256 = digest(args.font)
+    if candidate["sha256"] != font_sha256:
         raise ValueError("reproducibility SHA-256 does not match release font")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    for obsolete in ("Goku-Pixel.ttc", "Goku-Pixel.ttc.sha256"):
+        (args.output_dir / obsolete).unlink(missing_ok=True)
     release_font = args.output_dir / "Goku.ttc"
     atomic_copy(args.font, release_font)
     atomic_copy(args.notices, args.output_dir / "THIRD_PARTY_NOTICES.md")
     atomic_copy(args.release_notes, args.output_dir / "RELEASE_NOTES.md")
     atomic_copy(args.gohu_license, args.output_dir / "GohuFont-WTFPL.txt")
-    atomic_text(args.output_dir / "Goku.ttc.sha256", f"{sha256}  Goku.ttc\n")
+    atomic_text(
+        args.output_dir / "Goku.ttc.sha256",
+        f"{font_sha256}  Goku.ttc\n",
+    )
+    atomic_text(
+        args.output_dir / "SHA256SUMS",
+        f"{font_sha256}  Goku.ttc\n",
+    )
 
     manifest = {
-        "format": 1,
+        "format": 3,
         "release": f"Goku {VERSION}",
         "source_date_epoch": SOURCE_DATE_EPOCH,
         "font": {
             "file": "Goku.ttc",
+            "outline_model": "universal-pixel-grid",
             "bytes": release_font.stat().st_size,
-            "sha256": sha256,
+            "sha256": font_sha256,
             "faces": faces,
         },
         "validation": {
@@ -153,8 +167,8 @@ def main() -> None:
     )
     print(f"Prepared Goku {VERSION} release assets in {args.output_dir}")
     print(f"  Goku.ttc: {release_font.stat().st_size:,} bytes")
-    print(f"  SHA-256: {sha256}")
-    print(f"  faces: {len(faces)} numeric faces")
+    print(f"  SHA-256: {font_sha256}")
+    print(f"  faces: {len(faces)} pixel-grid faces")
 
 
 if __name__ == "__main__":

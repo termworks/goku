@@ -4,10 +4,11 @@
   <img src="artwork/01-goku-header.png" alt="Goku terminal font — code at full power" width="100%">
 </p>
 
-Goku is a vector, monospaced terminal font derived from the handcrafted Gohu
-uni14 bitmap design. `Goku Pixel` rebuilds the complete collection—text,
-italics, symbols, terminal graphics, and Nerd Font icons—on one crisp pixel
-grid. The previews below are rendered directly from `Goku-Pixel.ttc`.
+Goku is a monospaced terminal font derived from the handcrafted Gohu uni14
+bitmap design. Its complete collection—text, italics, symbols, terminal
+graphics, ligatures, and Nerd Font icons—is rebuilt on one crisp pixel grid.
+The previews below are rendered directly from the sole release file,
+`Goku.ttc`.
 
 ## Preview
 
@@ -16,7 +17,7 @@ grid. The previews below are rendered directly from `Goku-Pixel.ttc`.
 </p>
 
 <p align="center">
-  <img src="artwork/03-goku-symbols.png" alt="Goku Pixel icons, dev logos, terminal symbols, math, braille, and legacy-computing glyphs" width="100%">
+  <img src="artwork/03-goku-symbols.png" alt="Goku icons, dev logos, terminal symbols, math, braille, and legacy-computing glyphs" width="100%">
 </p>
 
 <p align="center">
@@ -24,7 +25,11 @@ grid. The previews below are rendered directly from `Goku-Pixel.ttc`.
 </p>
 
 <p align="center">
-  <img src="artwork/05-goku-terminal.png" alt="Goku Pixel terminal dashboard with icons, plots, status bars, and Powerline symbols" width="100%">
+  <img src="artwork/05-goku-terminal.png" alt="Goku terminal dashboard with icons, plots, status bars, and Powerline symbols" width="100%">
+</p>
+
+<p align="center">
+  <img src="artwork/06-goku-ligatures.png" alt="Goku native programming ligatures" width="100%">
 </p>
 
 The collection contains 18 faces. Upright and italic variants are available at
@@ -74,30 +79,36 @@ choose a different numeric weight instead.
 - Italic affects text while terminal symbols and icons remain upright.
 - Every adjacent numeric weight produces a distinct, progressively darker
   raster at terminal sizes.
+- 28 native Goku programming ligatures cover arrows, comparisons, logic,
+  shifts, and code delimiters. They use `calt`, remain on the pixel grid, and
+  preserve the exact two- or three-cell cursor width of their source text.
 - `ss01` provides an optional dotted zero; the default zero remains slashed.
 - Fixed metadata timestamps make clean builds byte-for-byte reproducible.
 
 ## Kitty
 
-Select exact faces by PostScript name. This is the small-size Goku Pixel setup
-used during development: weight 200 for normal and italic text, 600 for bold,
-and 700 for bold italic.
+Select exact faces by PostScript name. This is the small-size setup used during
+development: weight 200 for normal and italic text, 600 for bold, and 700 for
+bold italic.
 
 ```conf
-font_family      postscript_name=GokuPixel-200
-bold_font        postscript_name=GokuPixel-600
-italic_font      postscript_name=GokuPixel-200Italic
-bold_italic_font postscript_name=GokuPixel-700Italic
+font_family      postscript_name=Goku-200
+bold_font        postscript_name=Goku-600
+italic_font      postscript_name=Goku-200Italic
+bold_italic_font postscript_name=Goku-700Italic
 ```
 
 Enable the dotted zero on the selected faces with:
 
 ```conf
-font_features GokuPixel-200 +ss01
-font_features GokuPixel-600 +ss01
-font_features GokuPixel-200Italic +ss01
-font_features GokuPixel-700Italic +ss01
+font_features Goku-200 +ss01
+font_features Goku-600 +ss01
+font_features Goku-200Italic +ss01
+font_features Goku-700Italic +ss01
 ```
+
+Programming ligatures are enabled by default. Disable them for a selected face
+with `font_features Goku-200 -calt`.
 
 ## Build and verify
 
@@ -107,17 +118,18 @@ nix develop path:$PWD
 make clean all
 ```
 
-`make all` builds `build/Goku.ttc` and validates the internal four-face source
-anchors before auditing the 18-face numeric release. The audit verifies names,
-weights, version metadata, glyph identity, hint isolation, unchanged icons,
-monospaced metrics, the 400/700 source-anchor rasters, text-edge clearance, and
-the visual order of all nine weights.
+`make all` builds the sole release font at `build/Goku.ttc`. It validates the
+internal vector source, all 18 numeric faces, universal pixel-grid conversion,
+small-size hinting, OpenType shaping, sfnt integrity, and OTS sanitization. The
+internal vector collection exists only as input to pixelization and is never
+installed or released.
 
-### Universal pixelation
+### Universal pixel construction
 
-The optional pixel pass converts every drawable outline—not only Gohu text,
-but also Unicode symbols, box drawing, Powerline, Nerd Font icons, alternates,
-and `.notdef`—into grid-aligned rectangles:
+The normal build converts every drawable outline—not only Gohu text, but also
+Unicode symbols, box drawing, Powerline, Nerd Font icons, ligatures,
+alternates, and `.notdef`—into grid-aligned rectangles. To rerun just its final
+validator:
 
 ```sh
 make pixel-validate
@@ -128,10 +140,11 @@ geometric intersection with the source outline. Coverage strictly greater than
 50% becomes one filled pixel; everything else becomes empty. Every face uses
 the same cutoff. This preserves complete terminals and descenders, avoids
 overfilled heavy counters, and keeps symbols, Powerline glyphs, box drawing,
-and icons consistent across the family. The validated default is a 20×35 grid:
-its pixels remain square in Goku's 8:14 cell while preserving every non-empty
-outline across all 18 faces. The result is `build/Goku-Pixel.ttc`, under the
-separate `Goku Pixel` family so it can be tested beside regular Goku.
+and icons consistent across the family. The validated default is a 20×35 grid
+per terminal cell: its pixels remain square in Goku's 8:14 cell while
+preserving every non-empty outline across all 18 faces. Multi-cell ligatures
+receive proportional 40- or 60-column grids instead of being stretched across
+a single cell. The result is the normal `Goku` family in `build/Goku.ttc`.
 
 After quantization, the build regenerates TrueType instructions for mapped text
 glyphs at 7–13px and strips them from symbols and icons. This keeps every
@@ -142,7 +155,7 @@ complete descenders and the upright/italic 100–900 raster progression.
 The grid and threshold are configurable. For example:
 
 ```sh
-make pixel PIXEL_COLUMNS=24 PIXEL_ROWS=42 PIXEL_THRESHOLD=0.5
+make build PIXEL_COLUMNS=24 PIXEL_ROWS=42 PIXEL_THRESHOLD=0.5
 ```
 
 `make pixel-validate` rejects lost outlines, off-grid points, curves, diagonal
@@ -151,13 +164,13 @@ regressions, invalid sfnt data, and OTS failures.
 
 ### Regenerate the showcase
 
-The five PNGs are generated from the built font rather than approximated with
+The six PNGs are generated from the built font rather than approximated with
 a lookalike. Supply the hero illustration used by the header; all typography,
 code, icons, diagrams, and terminal graphics are rendered from the TTC:
 
 ```sh
 python src/render_promo_artwork.py \
-  --font build/Goku-Pixel.ttc \
+  --font build/Goku.ttc \
   --hero path/to/goku-hero.jpg \
   --output artwork
 ```
@@ -169,12 +182,14 @@ make release
 ```
 
 The release gate also runs OpenType Sanitizer, HarfBuzz shaping, sfnt integrity,
-and two independent clean builds. It writes one font binary plus its checksum,
-machine-readable manifest, release notes, and third-party notices to `dist/`.
+and two independent clean builds of the complete pixel pipeline. It writes one
+`Goku.ttc`, its SHA-256 checksums, a machine-readable manifest, release notes,
+and third-party notices to `dist/`.
 
-Push a `v`-prefixed tag to publish those files as a GitHub Release. The release
-workflow attaches the raw `Goku.ttc` directly, together with its SHA-256
-checksum, manifest, notices, and GohuFont license:
+Every push to a branch also exposes the raw TTC as an uncompressed artifact on
+the **Goku quality** workflow run. Push a `v`-prefixed tag to publish a durable
+GitHub Release. The release workflow attaches `Goku.ttc` directly, together
+with its SHA-256 checksum, manifest, notices, and GohuFont license:
 
 ```sh
 git tag -a v1.300 -m "Goku 1.300"
@@ -192,7 +207,7 @@ Linux user installation:
 
 ```sh
 mkdir -p ~/.local/share/fonts/Goku
-cp dist/Goku.ttc ~/.local/share/fonts/Goku/Goku.ttc
+cp dist/Goku.ttc ~/.local/share/fonts/Goku/
 fc-cache -f ~/.local/share/fonts/Goku
 ```
 

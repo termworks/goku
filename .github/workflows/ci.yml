@@ -10,7 +10,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - name: Check out pinned sources
         uses: actions/checkout@v6
@@ -33,6 +33,14 @@ jobs:
         run: >-
           nix develop path:$PWD --command make reproducible
           QUALITY_DIR=build/reports/quality/ci
+
+      - name: Upload raw Goku font
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          path: build/Goku.ttc
+          archive: false
+          if-no-files-found: error
 
       - name: Upload quality evidence
         if: always()

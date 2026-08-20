@@ -101,7 +101,7 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="goku-pixel-hints-") as directory:
         temporary = Path(directory)
-        reference_path = temporary / "Goku-Pixel-400-reference.ttf"
+        reference_path = temporary / "Goku-400-reference.ttf"
         reference = TTFont(args.source, fontNumber=6, recalcTimestamp=False)
         reference.save(reference_path, reorderTables=False)
         reference.close()

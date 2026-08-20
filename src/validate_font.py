@@ -24,6 +24,7 @@ from design import (
     VERSION,
 )
 from font_variants import is_powerline, is_private_use
+from ligatures import LIGATURE_ADVANCES, LIGATURE_NAMES
 from text_glyphs import text_glyph_names
 
 
@@ -206,12 +207,19 @@ def main() -> None:
     assert ASCENT - DESCENT == UPM
     assert len(reference_cmap) > 10_000, "Nerd glyph set was not merged"
     assert "zero.ss01" in reference_order
+    assert LIGATURE_NAMES <= set(reference_order)
+    assert not LIGATURE_NAMES & set(reference_cmap.values())
     # The conventional control glyph `.null` has no advance; every printable
     # or terminal-addressable glyph must use the single Goku cell width.
     assert reference_widths.get(".null") == 0
     assert {
-        advance for name, advance in reference_widths.items() if name != ".null"
+        advance
+        for name, advance in reference_widths.items()
+        if name != ".null" and name not in LIGATURE_NAMES
     } == {CELL_WIDTH}
+    assert {
+        name: reference_widths[name] for name in LIGATURE_NAMES
+    } == LIGATURE_ADVANCES
 
     text_by_style = {
         "Regular": text_glyph_names(regular, args.regular_bdf),
@@ -254,6 +262,17 @@ def main() -> None:
         assert HINT_TABLES <= set(font.keys())
         substitutions = single_substitutions(font, "ss01")
         assert substitutions.get("zero") == "zero.ss01"
+        feature_tags = {
+            record.FeatureTag
+            for record in font["GSUB"].table.FeatureList.FeatureRecord
+        }
+        assert "calt" in feature_tags
+        for name, advance in LIGATURE_ADVANCES.items():
+            assert font["hmtx"].metrics[name][0] == advance
+            bounds = glyph_bounds_by_name(font, name)
+            assert bounds is not None
+            assert 0 <= bounds[0] < bounds[2] <= advance
+            assert DESCENT <= bounds[1] < bounds[3] <= ASCENT
 
         text_names = text_by_style[face_style]
         hinted = {name for name in text_names if has_glyph_program(font, name)}
@@ -334,6 +353,7 @@ def main() -> None:
     print(f"  monospaced advance: {CELL_WIDTH} (.null is zero-width)")
     print(f"  full-cell block: {full_cell}")
     print("  ss01 dotted zero is available in every face")
+    print(f"  native-grid coding ligatures: {len(LIGATURE_NAMES)}")
     print("  symbols/icons stay unhinted and upright in italic faces")
 
 

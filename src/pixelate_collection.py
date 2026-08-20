@@ -19,6 +19,8 @@ from fontTools.pens.recordingPen import DecomposingRecordingPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTCollection, TTFont
 
+from design import CELL_WIDTH
+
 
 # Experimental weight-aware thresholds are disabled by default. A common
 # cutoff is the only terminal-safe default: stronger cutoffs can erase terminal
@@ -84,6 +86,11 @@ def rounded_ratio(numerator: int, denominator: int) -> int:
 def grid_boundaries(start: int, end: int, count: int) -> tuple[int, ...]:
     span = end - start
     return tuple(start + rounded_ratio(index * span, count) for index in range(count + 1))
+
+
+def grid_columns_for_advance(advance: int, columns_per_cell: int) -> int:
+    """Keep pixels square when a ligature spans multiple terminal cells."""
+    return max(1, rounded_ratio(columns_per_cell * advance, CELL_WIDTH))
 
 
 def rectangle_path(x0: int, y0: int, x1: int, y1: int) -> pathops.Path:
@@ -311,7 +318,8 @@ def pixelate_face(
             metrics[glyph_name] = (advance, 0)
             continue
         source_nonempty += 1
-        x_boundaries = grid_boundaries(0, advance, columns)
+        glyph_columns = grid_columns_for_advance(advance, columns)
+        x_boundaries = grid_boundaries(0, advance, glyph_columns)
         recording = frozen_recording(font, glyph_name)
         glyph_threshold = (
             text_threshold if glyph_name in weight_sensitive else threshold

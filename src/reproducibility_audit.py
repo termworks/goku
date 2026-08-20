@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the numeric Goku release twice and enforce reproducibility budgets."""
+"""Build the final pixel-grid Goku release twice and enforce budgets."""
 
 from __future__ import annotations
 
@@ -17,9 +17,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-builder", required=True, type=Path)
     parser.add_argument("--weight-builder", required=True, type=Path)
+    parser.add_argument("--pixel-builder", required=True, type=Path)
+    parser.add_argument("--hint-builder", required=True, type=Path)
     parser.add_argument("--regular-bdf", required=True, type=Path)
     parser.add_argument("--bold-bdf", required=True, type=Path)
     parser.add_argument("--reference", required=True, type=Path)
+    parser.add_argument("--columns", required=True, type=int)
+    parser.add_argument("--rows", required=True, type=int)
+    parser.add_argument("--threshold", required=True, type=float)
+    parser.add_argument("--weight-contrast", required=True, type=float)
     parser.add_argument("--budgets", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
     return parser.parse_args()
@@ -36,6 +42,8 @@ def digest(path: Path) -> str:
 def build(args: argparse.Namespace, output: Path, log: Path) -> float:
     started = time.perf_counter()
     base = output.with_name("Goku-Base.ttc")
+    vector = output.with_name("Goku-Vector.ttc")
+    unhinted = output.with_name("Goku-unhinted.ttc")
     with log.open("w", encoding="utf-8") as stream:
         subprocess.run(
             (
@@ -63,9 +71,49 @@ def build(args: argparse.Namespace, output: Path, log: Path) -> float:
                 "--bold-bdf",
                 str(args.bold_bdf),
                 "--output",
-                str(output),
+                str(vector),
                 "--family",
                 "Goku",
+            ),
+            check=True,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+        )
+        subprocess.run(
+            (
+                sys.executable,
+                str(args.pixel_builder),
+                "--source",
+                str(vector),
+                "--output",
+                str(unhinted),
+                "--columns",
+                str(args.columns),
+                "--rows",
+                str(args.rows),
+                "--threshold",
+                str(args.threshold),
+                "--weight-contrast",
+                str(args.weight_contrast),
+                "--family",
+                "Goku",
+            ),
+            check=True,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+        )
+        subprocess.run(
+            (
+                sys.executable,
+                str(args.hint_builder),
+                "--source",
+                str(unhinted),
+                "--regular-bdf",
+                str(args.regular_bdf),
+                "--bold-bdf",
+                str(args.bold_bdf),
+                "--output",
+                str(output),
             ),
             check=True,
             stdout=stream,
@@ -117,6 +165,14 @@ def main() -> None:
         "builders": {
             "base": str(args.base_builder),
             "weights": str(args.weight_builder),
+            "pixelation": str(args.pixel_builder),
+            "hinting": str(args.hint_builder),
+        },
+        "pixel_grid": {
+            "columns": args.columns,
+            "rows": args.rows,
+            "threshold": args.threshold,
+            "weight_contrast": args.weight_contrast,
         },
         "reference": {
             "path": str(args.reference),
