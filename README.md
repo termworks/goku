@@ -187,12 +187,12 @@ GitHub Release. The release workflow attaches `Goku.ttc` directly, together
 with its SHA-256 checksum, manifest, notices, and GohuFont license:
 
 ```sh
-git tag -a v1.300 -m "Goku 1.300"
-git push origin v1.300
+git tag -a v1.301 -m "Goku 1.301"
+git push origin v1.301
 ```
 
 The same workflow can be started manually from **Actions → Goku release → Run
-workflow**. The optional tag field can be left blank to derive `v1.300` from
+workflow**. The optional tag field can be left blank to derive `v1.301` from
 the generated release manifest. If that tag does not exist yet, the manual run
 creates it at the selected branch commit before publishing the release.
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 FAMILY = "Goku"
 POSTSCRIPT_STEM = "Goku"
-VERSION = "1.300"
+VERSION = "1.301"
 
 # A fixed timestamp makes clean builds byte-for-byte reproducible. TrueType
 # timestamps count seconds from 1904-01-01; SOURCE_DATE_EPOCH is Unix time.

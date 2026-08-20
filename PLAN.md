@@ -1,9 +1,9 @@
 # Goku development plan
 
-Last updated: 2026-08-19
-Current release candidate: 1.300
-Active milestone: text cell-edge clearance
-Active task: live-test the validated 1.300 collection in Kitty
+Last updated: 2026-08-20
+Current release candidate: 1.301
+Active milestone: high-resolution pixel-grid release
+Active task: publish the validated 1.301 collection
 
 ## Mission
 
@@ -173,7 +173,7 @@ Acceptance criteria:
 
 ## P2 — Pixel-perfect terminal graphics
 
-Target release: 1.300.
+Target release: 1.301.
 
 Create Goku-native, parameterized terminal graphics rather than depending on
 whatever geometry arrives through the icon patcher.

@@ -24,7 +24,7 @@ CYAN = "#73e0d1"
 PURPLE = "#b58cff"
 PINK = "#ff78b4"
 BG = "#070a14"
-VERSION = "1.300"
+VERSION = "1.301"
 
 
 class Faces:

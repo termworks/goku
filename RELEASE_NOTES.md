@@ -1,6 +1,6 @@
-# Goku 1.300
+# Goku 1.301
 
-Goku 1.300 gives ordinary text deliberate breathing room inside terminal
+Goku 1.301 gives ordinary text deliberate breathing room inside terminal
 cells. The sole release file, `Goku.ttc`, contains nine upright weights (`100`
 through `900`) and nine matching italics, all built on the universal pixel
 grid.

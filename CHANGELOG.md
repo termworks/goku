@@ -1,6 +1,17 @@
 # Changelog
 
-## 1.300 — pending GitHub release
+## 1.301 — pending GitHub release
+
+- Raised the universal outline grid to 24x42, exactly 3x Gohu's native 8x14
+  grid, for finer Nerd Font and imported Unicode symbols without stretching
+  the original text proportions.
+- Removed programming ligatures so operators always remain separate cursor
+  cells.
+- Reworked small-size hinting across all 18 numeric upright and italic faces.
+- Regenerated the terminal previews with exact cell-height prompt, current-line,
+  and status backgrounds and aligned Powerline caps and separators.
+
+## 1.300
 
 - Added explicit cell-edge clearance for all 600 ordinary Gohu text glyphs in
   Regular, Bold, and their italics.
