@@ -105,6 +105,58 @@ font_features Goku-700Italic +ss01
 
 ## Build and verify
 
+### Nix package and binary cache
+
+The flake provides `packages.default` and `packages.goku` for Linux x86-64 and
+ARM64. Both install the portable `Goku.ttc` collection under
+`share/fonts/truetype/`, with notices, the Gohu licence, and a release manifest
+under `share/doc/goku/`. The package contains no font-building tools.
+
+```sh
+make nix-build
+make nix-check
+```
+
+The package runs the existing `make release` validation and reproducibility
+gates, then checks all 18 installed faces with Fontconfig. Its Gohu input is
+locked to the same commit as the submodule, so a GitHub flake consumer does not
+need a separate submodule checkout.
+
+After a tagged release's cache workflow succeeds:
+
+```sh
+cachix use termworks
+nix build github:termworks/goku/vX.YYY#goku
+```
+
+For a NixOS flake, add an input and use the package in your system module:
+
+```nix
+inputs.goku.url = "github:termworks/goku/vX.YYY";
+
+# Inside a NixOS module receiving inputs through specialArgs:
+fonts.packages = [
+  inputs.goku.packages.${pkgs.stdenv.hostPlatform.system}.goku
+];
+```
+
+With Home Manager, add the same package to `home.packages` and enable
+`fonts.fontconfig.enable`. A bare `nix build` creates a store output; it does not
+install the font into the desktop or change its default font. Goku has no
+executable, so use `nix build`, not `nix run`.
+
+Configure the Termworks cache on the consuming machine or top-level flake;
+cache settings from an input are not inherited automatically. The public key is
+`termworks.cachix.org-1:Ty7sSVALfD5ajbcWBIdaNHcaEx3fEmVrOo+rSzy0mvE=`.
+
+Only pushed `v*` tags publish to Cachix. Stable pins `goku-x86_64-linux` and
+`goku-aarch64-linux` retain five revisions each; there are no version-named pins
+or `latest` aliases. Fresh runners download with builders disabled and verify
+the font checksum, face names, and isolated font discovery. The workflow uses
+the repository's `CACHIX_AUTH_TOKEN` secret for Termworks, never Paneworks.
+
+### Source build
+
 ```sh
 git submodule update --init --recursive --depth 1
 nix develop path:$PWD

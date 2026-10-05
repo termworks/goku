@@ -1,6 +1,11 @@
-# Goku 1.301
+# Goku 1.302
 
-Goku 1.301 gives ordinary text deliberate breathing room inside terminal
+This release adds an installable Nix font package and Termworks Cachix support
+for Linux x86-64 and ARM64. Cache publishing runs only for `v*` tags and retains
+five revisions. The collection keeps the 1.301 outlines and design; the approved
+release-size limit is now 65 MiB, with the same reproducibility and timing gates.
+
+Goku gives ordinary text deliberate breathing room inside terminal
 cells. The sole release file, `Goku.ttc`, contains nine upright weights (`100`
 through `900`) and nine matching italics, all built on the universal pixel
 grid.

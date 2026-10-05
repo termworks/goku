@@ -1,6 +1,6 @@
 {
   "max_clean_build_seconds": 900.0,
-  "max_release_bytes": 67108864,
+  "max_release_bytes": 68157440,
   "reference_release": "1.300",
   "reference_bytes": 58157972,
   "reference_sha256": "961279a3aa059cb8fc7074bdb5f322ff2076d9e55ea08c60b9be507e188badbc"

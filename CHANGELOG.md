@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.302
+
+- Added installable Nix font packages and tag-only Termworks Cachix publishing
+  for Linux x86-64 and ARM64, retaining five revisions per platform.
+- Added installed-font checksum, face, and Fontconfig discovery checks.
+- Raised the approved release-size budget to 65 MiB for the current collection;
+  the build-time and reproducibility requirements are unchanged.
+- Kept the 1.301 outlines and font design unchanged.
+
 ## 1.301 — pending GitHub release
 
 - Raised the universal outline grid to 24x42, exactly 3x Gohu's native 8x14

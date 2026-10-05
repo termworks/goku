@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "gohufont": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1498517274,
+        "narHash": "sha256-e9VOmJCFHcKM09oUx1L4WKSVIJG+Aw5vEiuAnGsIt8I=",
+        "owner": "hchargois",
+        "repo": "gohufont",
+        "rev": "cc36b8c9fed7141763e55dcee0a97abffcf08224",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hchargois",
+        "repo": "gohufont",
+        "rev": "cc36b8c9fed7141763e55dcee0a97abffcf08224",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1786862985,
@@ -18,6 +35,7 @@
     },
     "root": {
       "inputs": {
+        "gohufont": "gohufont",
         "nixpkgs": "nixpkgs"
       }
     }

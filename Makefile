@@ -144,3 +144,27 @@ icon-atlas:
 
 clean:
 	rm -rf build dist
+
+.PHONY: nix-build nix-check nix-lock nix-install nix-install-check nix-download-check
+
+nix-build:
+	nix build --accept-flake-config --no-update-lock-file --print-build-logs .#goku
+
+nix-check:
+	nix flake check --accept-flake-config --no-update-lock-file --print-build-logs
+
+nix-lock:
+	nix flake lock --accept-flake-config
+
+nix-install:
+	test -n "$(NIX_FONT_OUTPUT)"
+	install -Dm644 dist/Goku.ttc "$(NIX_FONT_OUTPUT)/share/fonts/truetype/Goku.ttc"
+	mkdir -p "$(NIX_FONT_OUTPUT)/share/doc/goku"
+	install -m644 dist/Goku.ttc.sha256 dist/release.json dist/THIRD_PARTY_NOTICES.md dist/GohuFont-WTFPL.txt README.md SOURCES.md "$(NIX_FONT_OUTPUT)/share/doc/goku/"
+
+nix-install-check:
+	bash quality/nix-smoke.sh "$(NIX_FONT_OUTPUT)"
+
+nix-download-check:
+	nix build --accept-flake-config --no-update-lock-file --max-jobs 0 --builders '' .#goku
+	nix shell --inputs-from . nixpkgs#fontconfig --command $(MAKE) nix-install-check NIX_FONT_OUTPUT="$$(realpath result)"
