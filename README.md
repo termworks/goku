@@ -125,7 +125,6 @@ need a separate submodule checkout.
 After a tagged release's cache workflow succeeds:
 
 ```sh
-cachix use termworks
 nix build github:termworks/goku/vX.YYY#goku
 ```
 
@@ -145,15 +144,24 @@ With Home Manager, add the same package to `home.packages` and enable
 install the font into the desktop or change its default font. Goku has no
 executable, so use `nix build`, not `nix run`.
 
-Configure the Termworks cache on the consuming machine or top-level flake;
-cache settings from an input are not inherited automatically. The public key is
-`termworks.cachix.org-1:Ty7sSVALfD5ajbcWBIdaNHcaEx3fEmVrOo+rSzy0mvE=`.
+Configure the cache on the consuming machine or top-level flake; cache settings
+from an input are not inherited automatically. In `/etc/nix/nix.conf`:
 
-Only pushed `v*` tags publish to Cachix. Stable pins `goku-x86_64-linux` and
-`goku-aarch64-linux` retain five revisions each; there are no version-named pins
-or `latest` aliases. Fresh runners download with builders disabled and verify
-the font checksum, face names, and isolated font discovery. The workflow uses
-the repository's `CACHIX_AUTH_TOKEN` secret for Termworks, never Paneworks.
+```ini
+extra-substituters = https://cache.bresilla.com/bresilla
+extra-trusted-public-keys = bresilla:zsecaZYIrjCJQS4AuGPmEVU5PRkiMmB/Mds3KaCzTvE=
+```
+
+Only pushed `v*` tags publish to the cache. Stable pins `goku-x86_64-linux` and
+`goku-aarch64-linux`, listed at <https://cache.bresilla.com/-/pins>, keep only
+the pinned build; there are no version-named pins or `latest` aliases. Builds
+that are no longer pinned are removed and may need rebuilding. Fresh runners
+download with builders disabled and verify the font checksum, face names, and
+isolated font discovery. The shared
+[`attic-push`](https://github.com/bresilla/nixos/tree/main/.github/actions/attic-push)
+action uploads only the paths cache.nixos.org does not have and sets the pins,
+using the organization secrets `ATTIC_TOKEN` and `PIN_TOKEN`;
+`NETBIRD_SETUP_KEY` is only needed for uploads over 95 MB.
 
 ### Source build
 

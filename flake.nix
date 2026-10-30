@@ -2,8 +2,8 @@
   description = "Portable numeric-weight Goku terminal font collection";
 
   nixConfig = {
-    extra-substituters = [ "https://termworks.cachix.org" ];
-    extra-trusted-public-keys = [ "termworks.cachix.org-1:Ty7sSVALfD5ajbcWBIdaNHcaEx3fEmVrOo+rSzy0mvE=" ];
+    extra-substituters = [ "https://cache.bresilla.com/bresilla" ];
+    extra-trusted-public-keys = [ "bresilla:zsecaZYIrjCJQS4AuGPmEVU5PRkiMmB/Mds3KaCzTvE=" ];
   };
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
