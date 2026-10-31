@@ -22,8 +22,12 @@ jobs:
         include:
           - runner: ubuntu-24.04
             system: x86_64-linux
+            wireguard-key: WIREGUARD_KEY_X86
+            wireguard-address: 10.77.0.6
           - runner: ubuntu-24.04-arm
             system: aarch64-linux
+            wireguard-key: WIREGUARD_KEY_ARM
+            wireguard-address: 10.77.0.7
     steps:
       - name: Check publishing credentials
         env:
@@ -61,7 +65,8 @@ jobs:
           pins: ${{ steps.release.outputs.pins }}
           attic-token: ${{ secrets.ATTIC_TOKEN }}
           pin-token: ${{ secrets.PIN_TOKEN }}
-          netbird-setup-key: ${{ secrets.NETBIRD_SETUP_KEY }}
+          wireguard-key: ${{ secrets[matrix.wireguard-key] }}
+          wireguard-address: ${{ matrix.wireguard-address }}
 
   verify-download:
     needs: publish

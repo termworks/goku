@@ -161,7 +161,7 @@ isolated font discovery. The shared
 [`attic-push`](https://github.com/bresilla/nixos/tree/main/.github/actions/attic-push)
 action uploads only the paths cache.nixos.org does not have and sets the pins,
 using the organization secrets `ATTIC_TOKEN` and `PIN_TOKEN`;
-`NETBIRD_SETUP_KEY` is only needed for uploads over 95 MB.
+`WIREGUARD_KEY_X86` and `WIREGUARD_KEY_ARM` are only needed for uploads over 95 MB.
 
 ### Source build
 
